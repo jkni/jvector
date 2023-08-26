@@ -87,6 +87,9 @@ public class ConcurrentNeighborSet {
   }
 
   public void cleanup() {
+    // TODO try pruning down the nighbors list to only diverse neighbors
+    // (instead of stopping when we are under the edge count) and see if
+    // that improves search times
     neighborsRef.getAndUpdate(
         current -> {
           ConcurrentNeighborArray next = current.copy();
@@ -136,50 +139,21 @@ public class ConcurrentNeighborSet {
     assert natural.scoresDescOrder;
     assert concurrent.scoresDescOrder;
 
-    neighborsRef.getAndUpdate(
-        current -> {
-          // We don't want to over-prune the neighbors, which can
-          // happen if we group the concurrent candidates and the natural candidates together.
-          //
-          // Consider the following graph with "circular" test vectors:
-          //
-          // 0 -> 1
-          // 1 <- 0
-          // At this point we insert nodes 2 and 3 concurrently, denoted T1 and T2 for threads 1 and
-          // 2
-          //   T1  T2
-          //       insert 2 to L1 [2 is marked "in progress"]
-          //   insert 3 to L1
-          //   3 considers as neighbors 0, 1, 2; 0 and 1 are not diverse wrt 2
-          // 3 -> 2 is added to graph
-          //   3 is marked entry node
-          //        2 follows 3 to L0, where 3 only has 2 as a neighbor
-          // 2 -> 3 is added to graph
-          // all further nodes will only be added to the 2/3 subgraph; 0/1 are partitioned forever
-          //
-          // Considering concurrent inserts separately from natural candidates solves this problem;
-          // both 1 and 2 will be added as neighbors to 3, avoiding the partition, and 2 will then
-          // pick up the connection to 1 that it's supposed to have as well.
-
-          if (size() + natural.size() + concurrent.size() <= maxConnections) {
-            // compute diversity separately, as above
-            ConcurrentNeighborArray diverseNatural = copyDiverse(natural, selectDiverse(natural));
-            ConcurrentNeighborArray diverseConcurrent =
-                copyDiverse(concurrent, selectDiverse(concurrent));
-            var raw = mergeNeighbors(current, mergeNeighbors(diverseNatural, diverseConcurrent));
-            return new ConcurrentNeighborArray(maxConnections, raw);
-          } else {
-            // merge all the candidates into a single array and compute the diverse ones to keep
-            // from that.
-            // (this is significantly more efficient than the above approach since we'd be adding
-            //  extra edges, only to prune them back later; pruning is expensive)
-            NeighborArray merged = mergeNeighbors(mergeNeighbors(natural, current), concurrent);
-            BitSet selected = selectDiverse(merged);
-            return copyDiverse(merged, selected);
-          }
-        });
+    neighborsRef.getAndUpdate(current -> {
+      // merge all the candidates into a single array and compute the diverse ones to keep
+      // from that.  we do this first by selecting the ones to keep, and then by copying
+      // only those into a new NeighborArray.  This is less expensive than doing the
+      // diversity computation in-place, since we are going to do multiple passes and
+      // pruning back extras is expensive.
+      NeighborArray merged = mergeNeighbors(mergeNeighbors(natural, current), concurrent);
+      BitSet selected = selectDiverse(merged);
+      return copyDiverse(merged, selected);
+    });
   }
 
+  /**
+   * Copies the selected neighbors from the merged array into a new array.
+   */
   private ConcurrentNeighborArray copyDiverse(NeighborArray merged, BitSet selected) {
     ConcurrentNeighborArray next = new ConcurrentNeighborArray(maxConnections, true);
     for (int i = 0; i < merged.size(); i++) {
@@ -190,12 +164,16 @@ public class ConcurrentNeighborSet {
       float score = merged.score()[i];
       next.addInOrder(node, score);
     }
+    assert next.size <= maxConnections;
     return next;
   }
 
   private BitSet selectDiverse(NeighborArray neighbors) {
     BitSet selected = new FixedBitSet(neighbors.size());
     int nSelected = 0;
+
+    // add diverse candidates, gradually increasing alpha to the threshold
+    // (so that the nearest candidates are prioritized)
     for (float a = 1.0f; a <= alpha + 1E-6 && nSelected < maxConnections; a += 0.2f) {
       for (int i = 0; i < neighbors.size() && nSelected < maxConnections; i++) {
         if (selected.get(i)) {
@@ -210,6 +188,20 @@ public class ConcurrentNeighborSet {
         }
       }
     }
+
+    // if we have room left over, include the closest candidates even if they're not diverse.
+    // this helps keep the graph connected when we are adding lots of neighbors, because the
+    // addition process is asymmetrical -- edges must be diverse to be added to a new node,
+    // but backlinks from other nodes are not subject to that requirement until they hit the
+    // size threshold.
+    for (int i = 0; i < neighbors.size() && nSelected < maxConnections && nSelected < neighbors.size(); i++) {
+      if (selected.get(i)) {
+        continue;
+      }
+      selected.set(i);
+      nSelected++;
+    }
+
     return selected;
   }
 
