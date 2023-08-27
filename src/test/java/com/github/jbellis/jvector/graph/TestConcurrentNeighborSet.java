@@ -64,15 +64,18 @@ public class TestConcurrentNeighborSet extends RandomizedTest {
 
   @Test
   public void testRemoveLeastDiverseFromEnd() throws IOException {
+    // start with 3 neighbors
     ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(0, 3, simpleScore);
     neighbors.insert(1, baseScore(1));
     neighbors.insert(2, baseScore(2));
     neighbors.insert(3, baseScore(3));
     assertEquals(3, neighbors.size());
 
+    // insert a 4th neighbor, but it should be evicted
     neighbors.insert(4, baseScore(4));
     assertEquals(3, neighbors.size());
 
+    // check that the original 3 neighbors are still there
     List<Integer> expectedValues = Arrays.asList(1, 2, 3);
     Iterator<Integer> iterator = neighbors.nodeIterator();
     for (Integer expectedValue : expectedValues) {

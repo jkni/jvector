@@ -121,7 +121,7 @@ public class TestFloatVectorGraph extends GraphIndexTestCase<float[]> {
             acceptOrds,
             Integer.MAX_VALUE);
 
-    int[] nodes = nn.nodes();
+    int[] nodes = nn.nodesCopy();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
     for (int node : nodes) {

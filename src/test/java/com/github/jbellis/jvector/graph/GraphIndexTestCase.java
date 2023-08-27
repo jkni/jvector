@@ -136,7 +136,7 @@ public abstract class GraphIndexTestCase<T> extends RandomizedTest {
             graph,
             null,
             Integer.MAX_VALUE);
-    int[] nodes = nn.nodes();
+    int[] nodes = nn.nodesCopy();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
     for (int node : nodes) {
@@ -178,7 +178,7 @@ public abstract class GraphIndexTestCase<T> extends RandomizedTest {
                     graph,
                     acceptOrds,
                     Integer.MAX_VALUE);
-    int[] nodes = nn.nodes();
+    int[] nodes = nn.nodesCopy();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
     for (int node : nodes) {
@@ -219,7 +219,7 @@ public abstract class GraphIndexTestCase<T> extends RandomizedTest {
                     acceptOrds,
                     Integer.MAX_VALUE);
 
-    int[] nodes = nn.nodes();
+    int[] nodes = nn.nodesCopy();
     for (int node : nodes) {
       assertTrue("the results include a deleted document: %d for %s".formatted(
               node, GraphIndex.prettyPrint(builder.graph)), acceptOrds.get(node));
@@ -443,18 +443,23 @@ public abstract class GraphIndexTestCase<T> extends RandomizedTest {
   @SuppressWarnings("unchecked")
   // build a random graph, then check that it has at least 90% recall
   public void testRandom() throws IOException {
+    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     int size = between(100, 150);
-    int dim = between(10, 15);
+    int dim = 2;
     AbstractMockVectorValues<T> vectors = vectorValues(size, dim);
     int topK = 5;
     VectorEncoding vectorEncoding = getVectorEncoding();
     GraphIndexBuilder<T> builder =
         new GraphIndexBuilder<>(vectors, vectorEncoding, similarityFunction, 10, 30, 1.0f, 1.4f);
-    // FIXME I would really like this to be a parallel build, but we end up with a disconnected graph too often.
-    // is this a bug in the build algorithm or just a consequence of the random graph?
-    OnHeapGraphIndex graph = buildInOrder(builder, vectors);
+    OnHeapGraphIndex graph = builder.build();
+    for (int j = 0; j < vectors.size(); j++) {
+      System.out.printf("{%d: (%.2f, %.2f)}%n", j, ((float[]) vectors.vectorValue(j))[0], ((float[]) vectors.vectorValue(j))[1]);
+    }
+    System.out.println(GraphIndex.prettyPrint(graph));
     Bits acceptOrds = getRandom().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
+    int efSearch = 100;
+    assert vectors.size() < efSearch : vectors.size();
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
       NeighborQueue actual;
@@ -462,7 +467,7 @@ public abstract class GraphIndexTestCase<T> extends RandomizedTest {
       actual =
               GraphSearcher.search(
                       query,
-                      100,
+                      efSearch,
                       vectors,
                       getVectorEncoding(),
                       similarityFunction,
@@ -470,6 +475,7 @@ public abstract class GraphIndexTestCase<T> extends RandomizedTest {
                       acceptOrds,
                       Integer.MAX_VALUE);
 
+      System.out.println(Arrays.toString(actual.nodesCopy()));
       while (actual.size() > topK) {
         actual.pop();
       }
@@ -490,11 +496,14 @@ public abstract class GraphIndexTestCase<T> extends RandomizedTest {
           }
         }
       }
-      assertEquals(topK, actual.size());
-      totalMatches += computeOverlap(actual.nodes(), expected.nodes());
+      int[] a = actual.nodesCopy();
+      int[] b = expected.nodesCopy();
+      totalMatches = computeOverlap(a, b);
+      double overlap = totalMatches / (double) (topK);
+      System.out.println(Arrays.toString(a));
+      System.out.println(Arrays.toString(b));
+      assertArrayEquals("After visiting %d nodes out of %d, overlap=%.2f".formatted(actual.visitedCount(), vectors.size(), overlap), a, b);
     }
-    double overlap = totalMatches / (double) (100 * topK);
-    assertTrue("overlap=" + overlap, overlap > 0.9);
   }
 
   protected OnHeapGraphIndex buildInOrder(GraphIndexBuilder<T> builder, RandomAccessVectorValues<T> vectors) {

@@ -54,18 +54,20 @@ public class GraphSearcher {
     this.visited = visited;
   }
 
-  public static <T> NeighborQueue search(T targetVector, int topK, RandomAccessVectorValues<T> copy, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction, GraphIndex graph, Bits acceptOrds, int maxValue) {
+  public static <T> NeighborQueue search(T targetVector, int topK, RandomAccessVectorValues<T> vectors, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction, GraphIndex graph, Bits acceptOrds, int visitedLimit) {
     var searcher = new GraphSearcher.Builder(graph.getView()).build();
-    return searcher.search(i1 -> {
+    var copy = vectors.copy();
+    NeighborSimilarity.ScoreFunction scoreFunction = i -> {
       switch (vectorEncoding) {
         case BYTE:
-          return similarityFunction.compare((byte[]) targetVector, (byte[]) copy.vectorValue(i1));
+          return similarityFunction.compare((byte[]) targetVector, (byte[]) copy.vectorValue(i));
         case FLOAT32:
-          return similarityFunction.compare((float[]) targetVector, (float[]) copy.vectorValue(i1));
+          return similarityFunction.compare((float[]) targetVector, (float[]) copy.vectorValue(i));
         default:
           throw new RuntimeException("Unsupported vector encoding: " + vectorEncoding);
       }
-    }, topK, acceptOrds, maxValue);
+    };
+    return searcher.search(scoreFunction, topK, acceptOrds, visitedLimit);
   }
 
   /** Builder */
@@ -126,8 +128,8 @@ public class GraphSearcher {
 
     int numVisited = 0;
     float score = scoreFunction.apply(ep);
-    numVisited++;
     visited.set(ep);
+    numVisited++;
     candidates.add(ep, score);
     if (acceptOrds == null || acceptOrds.get(ep)) {
       results.add(ep, score);

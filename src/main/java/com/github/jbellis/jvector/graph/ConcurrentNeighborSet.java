@@ -22,6 +22,7 @@ import com.github.jbellis.jvector.util.FixedBitSet;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Arrays;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -78,6 +79,7 @@ public class ConcurrentNeighborSet {
 
   public void backlink(Function<Integer, ConcurrentNeighborSet> neighborhoodOf, float overflow) {
     NeighborArray neighbors = neighborsRef.get();
+    System.out.println("Backlinking " + nodeId + " -> " + Arrays.toString(neighbors.copyDenseNodes()));
     for (int i = 0; i < neighbors.size(); i++) {
       int nbr = neighbors.node[i];
       float nbrScore = neighbors.score[i];
@@ -146,6 +148,12 @@ public class ConcurrentNeighborSet {
       // diversity computation in-place, since we are going to do multiple passes and
       // pruning back extras is expensive.
       NeighborArray merged = mergeNeighbors(mergeNeighbors(natural, current), concurrent);
+      System.out.printf("Node %s: %s + %s + %s = %s%n",
+              nodeId,
+              Arrays.toString(current.copyDenseNodes()),
+              Arrays.toString(natural.copyDenseNodes()),
+              Arrays.toString(concurrent.copyDenseNodes()),
+              Arrays.toString(merged.copyDenseNodes()));
       BitSet selected = selectDiverse(merged);
       return copyDiverse(merged, selected);
     });
@@ -161,6 +169,7 @@ public class ConcurrentNeighborSet {
         continue;
       }
       int node = merged.node()[i];
+      assert node != nodeId : "can't add self as neighbor at node " + nodeId;
       float score = merged.score()[i];
       next.addInOrder(node, score);
     }
@@ -308,7 +317,7 @@ public class ConcurrentNeighborSet {
   }
 
   private void enforceMaxConnLimit(NeighborArray neighbors) {
-    while (neighbors.size() > maxConnections) {
+    if (neighbors.size() > maxConnections) {
       try {
         removeLeastDiverse(neighbors, neighbors.size() - maxConnections);
       } catch (IOException e) {
