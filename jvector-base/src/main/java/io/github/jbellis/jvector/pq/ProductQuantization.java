@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -47,6 +48,8 @@ public class ProductQuantization {
     private final float[] globalCentroid;
     private final int[][] subvectorSizesAndOffsets;
 
+    public final LongAdder searches;
+    public final LongAdder misses;
     /**
      * Initializes the codebooks by clustering the input data using Product Quantization.
      *
@@ -95,6 +98,8 @@ public class ProductQuantization {
             offset += size;
         }
         this.originalDimension = Arrays.stream(subvectorSizesAndOffsets).mapToInt(m -> m[0]).sum();
+        this.searches = new LongAdder();
+        this.misses = new LongAdder();
     }
 
     /**
@@ -132,13 +137,19 @@ public class ProductQuantization {
      * It is the caller's responsibility to center the `other` vector by subtracting the global centroid
      * before calling this method.
      */
-    public float decodedDotProduct(byte[] encoded, float[] other) {
+    public float decodedDotProduct(byte[] encoded, float[] other, float[][] cache) {
         float sum = 0.0f;
         for (int m = 0; m < M; ++m) {
             int offset = subvectorSizesAndOffsets[m][1];
             int centroidIndex = Byte.toUnsignedInt(encoded[m]);
-            float[] centroidSubvector = codebooks[m][centroidIndex];
-            sum += VectorUtil.dotProduct(centroidSubvector, 0, other, offset, centroidSubvector.length);
+            var cachedValue = cache[m][centroidIndex];
+            if (cachedValue == Float.NEGATIVE_INFINITY) {
+                float[] centroidSubvector = codebooks[m][centroidIndex];
+                cachedValue = VectorUtil.dotProduct(centroidSubvector, 0, other, offset, centroidSubvector.length);
+                cache[m][centroidIndex] = cachedValue;
+            }
+
+            sum += cachedValue;
         }
         return sum;
     }
@@ -158,7 +169,7 @@ public class ProductQuantization {
     /**
      * Decodes the quantized representation (byte array) to its approximate original vector, relative to the global centroid.
      */
-    public void decodeCentered(byte[] encoded, float[] target) {
+    void decodeCentered(byte[] encoded, float[] target) {
         for (int m = 0; m < M; m++) {
             int centroidIndex = Byte.toUnsignedInt(encoded[m]);
             float[] centroidSubvector = codebooks[m][centroidIndex];
