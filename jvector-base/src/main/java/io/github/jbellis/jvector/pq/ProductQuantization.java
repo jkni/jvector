@@ -42,11 +42,11 @@ public class ProductQuantization {
     private static final int K_MEANS_ITERATIONS = 15; // VSTODO try 20 as well
     private static final int MAX_PQ_TRAINING_SET_SIZE = 256000;
 
-    private final float[][][] codebooks;
+    public final float[][][] codebooks;
     private final int M;
     private final int originalDimension;
     private final float[] globalCentroid;
-    private final int[][] subvectorSizesAndOffsets;
+    public final int[][] subvectorSizesAndOffsets;
 
     public final LongAdder searches;
     public final LongAdder misses;
@@ -140,15 +140,8 @@ public class ProductQuantization {
     public float decodedDotProduct(byte[] encoded, float[] other, float[][] cache) {
         float sum = 0.0f;
         for (int m = 0; m < M; ++m) {
-            int offset = subvectorSizesAndOffsets[m][1];
             int centroidIndex = Byte.toUnsignedInt(encoded[m]);
             var cachedValue = cache[m][centroidIndex];
-            if (cachedValue == Float.NEGATIVE_INFINITY) {
-                float[] centroidSubvector = codebooks[m][centroidIndex];
-                cachedValue = VectorUtil.dotProduct(centroidSubvector, 0, other, offset, centroidSubvector.length);
-                cache[m][centroidIndex] = cachedValue;
-            }
-
             sum += cachedValue;
         }
         return sum;

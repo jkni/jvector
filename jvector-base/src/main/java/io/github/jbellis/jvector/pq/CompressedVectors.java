@@ -48,7 +48,7 @@ public class CompressedVectors
         this.compressedVectors = compressedVectors;
         this.cache =
                 ThreadLocal.withInitial(
-                        () -> { System.out.println("Building new floats"); return new float[pq.getSubspaceCount()][];});
+                        () -> { System.out.println("Building new floats"); return new float[pq.getSubspaceCount()][256];});
     }
 
     public void write(DataOutput out) throws IOException
@@ -121,12 +121,16 @@ public class CompressedVectors
     }
 
     public NeighborSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction) {
-        var tlCache = cache.get();
-        for (var i = 0; i < pq.getSubspaceCount(); i++) {
-            tlCache[i] = Arrays.copyOf(empty, 256);
-        }
         float[] centroid = pq.getCenter();
         var centeredQuery = centroid == null ? q : VectorUtil.sub(q, centroid);
+        var tlCache = cache.get();
+        for (var i = 0; i < pq.getSubspaceCount(); i++) {
+            for (var j = 0; j < 256; j++) {
+                int offset = pq.subvectorSizesAndOffsets[i][1];
+                float[] centroidSubvector = pq.codebooks[i][j];
+                tlCache[i][j] = VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length);
+            }
+        }
         return (other) -> decodedSimilarity(other, centeredQuery, similarityFunction, tlCache);
     }
 }

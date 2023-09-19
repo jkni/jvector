@@ -61,7 +61,7 @@ public class Bench {
             outputStream.flush();
             var onDiskGraph = new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0));
 
-            int queryRuns = 10;
+            int queryRuns = 50;
             for (int overquery : efSearchOptions) {
                 for (boolean useDisk : diskOptions) {
                     start = System.nanoTime();
@@ -137,11 +137,11 @@ public class Bench {
                 // large files not yet supported
                 // "hdf5/deep-image-96-angular.hdf5",
                 // "hdf5/gist-960-euclidean.hdf5",
-                "hdf5/nytimes-256-angular.hdf5",
-                "hdf5/glove-100-angular.hdf5",
-                "hdf5/glove-200-angular.hdf5");
+                "hdf5/nytimes-256-angular.hdf5");
+                //"hdf5/glove-100-angular.hdf5",
+                //"hdf5/glove-200-angular.hdf5");
                 //"hdf5/sift-128-euclidean.hdf5"
-        var mGrid = List.of(8, 12, 16, 24);
+        var mGrid = List.of(24);
         var efConstructionGrid = List.of(120);
         var efSearchFactor = List.of(1, 2);
         var diskOptions = List.of(true);
