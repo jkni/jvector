@@ -22,6 +22,7 @@ import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.util.Bits;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -108,7 +109,12 @@ public class OnDiskGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accoun
         public T getVector(int node) {
             try {
                 long offset = neighborsOffset +
-                        node * (Integer.BYTES + (long) dimension * Float.BYTES + (long) Integer.BYTES * (maxDegree + 1)) // earlier entries
+                        node *
+                                (Integer.BYTES // ID
+                                        + (long) dimension * Float.BYTES // VECTOR
+                                        + 65 * Float.BYTES // CTB + square distance to self
+                                        + Integer.BYTES // neighbor count
+                                        + (maxDegree * (Integer.BYTES * 3 + Float.BYTES * 3))) // neighbor contents
                         + Integer.BYTES; // skip the ID
                 float[] vector = new float[dimension];
                 reader.seek(offset);
@@ -123,11 +129,20 @@ public class OnDiskGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accoun
         public NodesIterator getNeighborsIterator(int node) {
             try {
                 reader.seek(neighborsOffset +
-                        (node + 1) * (Integer.BYTES + (long) dimension * Float.BYTES) +
-                        (node * (long) Integer.BYTES * (maxDegree + 1)));
+                        (node + 1) * (Integer.BYTES + ((long) dimension * Float.BYTES) + (65 * Float.BYTES)) +
+                        (node * (Integer.BYTES + (maxDegree * (Integer.BYTES * 3 + Float.BYTES * 3)))));
                 int neighborCount = reader.readInt();
                 assert neighborCount <= maxDegree : String.format("neighborCount %d > M %d", neighborCount, maxDegree);
-                reader.read(neighbors, 0, neighborCount);
+                //reader.read(neighbors, 0, neighborCount);
+                for (int i = 0; i < neighborCount; i++) {
+                    neighbors[i] = reader.readInt();
+                    reader.readInt();
+                    reader.readInt();
+                    reader.readInt();
+                    reader.readInt();
+                    reader.readInt();
+
+                }
                 return new NodesIterator.ArrayNodesIterator(neighbors, neighborCount);
             }
             catch (IOException e) {
@@ -231,6 +246,14 @@ public class OnDiskGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accoun
             out.writeInt(graph.maxDegree());
 
             // for each graph node, write the associated vector and its neighbors
+            // also write out precomputed FINGER elements, which are
+            // 1. the square distance to C
+            // 2. cTB
+            // per neighbor:
+            // dres^s
+            // dres
+            // sign representation
+            // b for each neighboring node (dproj)
             for (int i = 0; i < oldToNewOrdinals.size(); i++) {
                 var entry = entriesByNewOrdinal.get(i);
                 int originalOrdinal = entry.getKey();
@@ -240,19 +263,38 @@ public class OnDiskGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accoun
                 }
 
                 out.writeInt(newOrdinal); // unnecessary, but a reasonable sanity check
-                Io.writeFloats(out, (float[]) vectors.vectorValue(originalOrdinal));
+                float[] vv = (float[]) vectors.vectorValue(originalOrdinal);
+                Io.writeFloats(out, vv);
+                var vu = VectorizationProvider.getInstance().getVectorUtilSupport();
+                // write square distance to self
+                out.writeFloat(vu.squareDistance(vv, vv));
+                // TODO: precompute cTB
+                float[] ctb = new float[64];
+                Io.writeFloats(out, ctb);
 
                 var neighbors = view.getNeighborsIterator(originalOrdinal);
                 out.writeInt(neighbors.size());
                 int n = 0;
                 for (; n < neighbors.size(); n++) {
                     out.writeInt(oldToNewOrdinals.get(neighbors.nextInt()));
+                    // r=64 sign representation
+                    out.writeLong(0L); // r
+                    out.writeFloat(0.0f); // b
+                    // write out dres2 precomputed, use dummy float for now
+                    // also store precomputed square root of this, use dummy float
+                    out.writeFloat(0.0f);
+                    out.writeFloat(0.0f);
                 }
                 assert !neighbors.hasNext();
-
                 // pad out to maxEdgesPerNode
                 for (; n < graph.maxDegree(); n++) {
                     out.writeInt(-1);
+                    out.writeLong(0L); // r
+                    out.writeFloat(0.0f); // b
+                    // write out dres2 precomputed, use dummy float for now
+                    // also store precomputed square root of this, use dummy float
+                    out.writeFloat(0.0f);
+                    out.writeFloat(0.0f);
                 }
             }
         } catch (Exception e) {
