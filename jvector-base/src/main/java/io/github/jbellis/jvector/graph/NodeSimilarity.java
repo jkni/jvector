@@ -61,6 +61,10 @@ public interface NodeSimilarity {
         float similarityTo(int node2);
     }
 
+    interface EstimatedNeighborsScoreFunction {
+        float[] similarityTo(int node2);
+    }
+
     interface ReRanker<T> {
         float similarityTo(int node2, Map<Integer, T> vectors);
     }

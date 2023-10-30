@@ -46,7 +46,6 @@ import static java.lang.Math.min;
  * search algorithm, see {@link GraphIndex}.
  */
 public class GraphSearcher<T> {
-
     private final GraphIndex.View<T> view;
 
     /**
@@ -126,7 +125,7 @@ public class GraphSearcher<T> {
                                int topK,
                                float threshold,
                                Bits acceptOrds) {
-        return searchInternal(scoreFunction, reRanker, topK, threshold, view.entryNode(), acceptOrds);
+        return searchInternal(scoreFunction, reRanker, null, topK, threshold, view.entryNode(), acceptOrds);
     }
 
     /**
@@ -159,6 +158,7 @@ public class GraphSearcher<T> {
      */
     SearchResult searchInternal(NodeSimilarity.ScoreFunction scoreFunction,
                                 NodeSimilarity.ReRanker<T> reRanker,
+                                NodeSimilarity.EstimatedNeighborsScoreFunction estimatedScoreFunction,
                                 int topK,
                                 float threshold,
                                 int ep,
@@ -215,6 +215,12 @@ public class GraphSearcher<T> {
             if (!scoreFunction.isExact()) {
                 vectorsEncountered.put(topCandidateNode, view.getVector(topCandidateNode));
             }
+            float[] friendSimilarities = new float[0];
+            if (estimatedScoreFunction != null) {
+                friendSimilarities = estimatedScoreFunction.similarityTo(topCandidateNode);
+            }
+            var iteration = 0;
+            float friendSimilarity;
             for (var it = view.getNeighborsIterator(topCandidateNode); it.hasNext(); ) {
                 int friendOrd = it.nextInt();
                 if (visited.getAndSet(friendOrd)) {
@@ -222,7 +228,12 @@ public class GraphSearcher<T> {
                 }
                 numVisited++;
 
-                float friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                if (estimatedScoreFunction == null) {
+                    friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                } else {
+                    friendSimilarity = friendSimilarities[iteration];
+                    iteration++;
+                }
                 scoreTracker.track(friendSimilarity);
 
                 if (friendSimilarity >= minAcceptedSimilarity) {

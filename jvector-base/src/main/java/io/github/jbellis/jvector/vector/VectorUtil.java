@@ -45,7 +45,7 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     float r = impl.dotProduct(a, b);
-    assert Float.isFinite(r);
+    assert Float.isFinite(r) : String.format("dotProduct(%s, %s) = %s", Arrays.toString(a), Arrays.toString(b), r);
     return r;
   }
 

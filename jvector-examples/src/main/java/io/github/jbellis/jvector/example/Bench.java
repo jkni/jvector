@@ -21,8 +21,8 @@ import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.example.util.DataSet;
 import io.github.jbellis.jvector.example.util.DownloadHelper;
 import io.github.jbellis.jvector.example.util.Hdf5Loader;
-import io.github.jbellis.jvector.example.util.ReaderSupplierFactory;
 import io.github.jbellis.jvector.example.util.SiftLoader;
+import io.github.jbellis.jvector.finger.FingerMetadata;
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndexBuilder;
 import io.github.jbellis.jvector.graph.GraphSearcher;
@@ -38,8 +38,6 @@ import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 
-import java.io.BufferedOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,7 +72,27 @@ public class Bench {
         System.out.format("Build M=%d ef=%d in %.2fs with avg degree %.2f and %.2f short edges%n",
                           M, efConstruction, (System.nanoTime() - start) / 1_000_000_000.0, onHeapGraph.getAverageDegree(), onHeapGraph.getAverageShortEdges());
 
-        var graphPath = testDirectory.resolve("graph" + M + efConstruction + ds.name);
+        start = System.nanoTime();
+        ListRandomAccessVectorValues ravv = new ListRandomAccessVectorValues(ds.baseVectors, ds.baseVectors.get(0).length);
+        var fingerMetadata = FingerMetadata.compute(onHeapGraph, ravv, 64);
+        System.out.format("Calculated Finger metadata in %.2fs%n",
+                (System.nanoTime() - start) / 1_000_000_000.0);
+        var queryVector = ravv.vectorValue(3).clone(); // we want close to neighbors
+        var approximateFunction = fingerMetadata.estimatedScoreFunctionFor(queryVector, VectorSimilarityFunction.EUCLIDEAN);
+        for (int i = 1; i < 2; i++) {
+            var neighbors = onHeapGraph.getView().getNeighborsIterator(i);
+            var actualSimilarities = new float[neighbors.size()];
+            for (int j = 0; j < neighbors.size(); j++) {
+                var neighbor = neighbors.nextInt();
+                System.out.println(i + " neighbor is " + neighbor);
+                actualSimilarities[j] = VectorSimilarityFunction.EUCLIDEAN.compare(queryVector, ravv.vectorValue(neighbor));
+            }
+            var approximateSimilarities = approximateFunction.similarityTo(i);
+            System.out.println("Actual similarities for neighbors of " + i + " are " + Arrays.toString(actualSimilarities));
+            System.out.println("Approximate similarities for neighbors of " + i + " are " + Arrays.toString(approximateSimilarities));
+        }
+
+        /*var graphPath = testDirectory.resolve("graph" + M + efConstruction + ds.name);
         try {
             try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(graphPath)))) {
                 OnDiskGraphIndex.write(onHeapGraph, floatVectors, outputStream);
@@ -112,7 +130,7 @@ public class Bench {
             }
         } finally {
             Files.deleteIfExists(graphPath);
-        }
+        }*/
     }
 
     // avoid recomputing the compressor repeatedly (this is a relatively small memory footprint)
@@ -222,12 +240,12 @@ public class Bench {
                 // large files not yet supported
                 // "hdf5/deep-image-96-angular.hdf5",
                 // "hdf5/gist-960-euclidean.hdf5",
-                "glove-25-angular.hdf5",
-                "glove-50-angular.hdf5",
-                "lastfm-64-dot.hdf5",
-                "glove-100-angular.hdf5",
-                "glove-200-angular.hdf5",
-                "nytimes-256-angular.hdf5",
+                //"glove-25-angular.hdf5",
+                //"glove-50-angular.hdf5",
+                //"lastfm-64-dot.hdf5",
+                //"glove-100-angular.hdf5",
+                //"glove-200-angular.hdf5",
+                //"nytimes-256-angular.hdf5",
                 "sift-128-euclidean.hdf5");
         for (var f : files) {
             if (pattern.matcher(f).find()) {
@@ -263,6 +281,12 @@ public class Bench {
                              baseVectors,
                              queryVectors,
                              gt);
+        for (var i = 0; i < baseVectors.size(); i++) {
+            var vector = baseVectors.get(i);
+            if (Math.abs(VectorSimilarityFunction.DOT_PRODUCT.compare(vector, vector) - 1.0) > 1e-5) {
+                System.out.println("non-normalized vector in dataset " + name + " at index " + i);
+            }
+        }
         System.out.format("%n%s: %d base and %d query vectors loaded, dimensions %d%n",
                           name, baseVectors.size(), queryVectors.size(), baseVectors.get(0).length);
         return ds;
