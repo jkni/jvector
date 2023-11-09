@@ -34,6 +34,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class FingerMetadata {
+
+    public final float[][] cBasisProjections;
     public final float[] cSquaredNorms;
     public final float[][] dProjScalarFactor;
     public final float[][] dResSquared;
@@ -42,6 +44,7 @@ public class FingerMetadata {
     public final LshBasis basis;
     public final GraphIndex<float[]> index;
     public final RandomAccessVectorValues<float[]> ravv;
+    private final double[] cachedCosine;
 
     public static FingerMetadata compute(GraphIndex<float[]> index, RandomAccessVectorValues<float[]> ravv, int lowRank) {
         var ravvPool = ravv.isValueShared() ? PoolingSupport.newThreadBased(ravv::copy) : PoolingSupport.newNoPooling(ravv);
@@ -53,9 +56,11 @@ public class FingerMetadata {
         var dResSquared = new float[size][];
         var dResiduals = new float[size][];
         var sgnDResTB = new long[size][];
+        var cBasisProjections = new float[size][];
         var basis = LshBasis.computeFromResiduals(ravvCopy, ravvCopy.vectorValue(0).length, lowRank);
         for (int i = 0; i < size; i++) {
             float[] c = ravvCopy.vectorValue(i);
+            cBasisProjections[i]= basis.project(c);
             var neighbors = indexView.getNeighborsIterator(i);
             var neighborCount = neighbors.size();
             dProjScalarFactor[i] = new float[neighborCount];
@@ -90,7 +95,7 @@ public class FingerMetadata {
             }
         }
 
-        return new FingerMetadata(cSquaredNorms, dProjScalarFactor, dResSquared, dResiduals, sgnDResTB, basis, index, ravv);
+        return new FingerMetadata(cSquaredNorms, cBasisProjections, dProjScalarFactor, dResSquared, dResiduals, sgnDResTB, basis, index, ravv);
     }
 
     private static float[] computeCSquaredNorms(RandomAccessVectorValues<float[]> ravv) {
@@ -236,9 +241,10 @@ public class FingerMetadata {
         }
     }
 
-    private FingerMetadata(float[] cSquaredNorms, float[][] dProjScalarFactor, float[][] dResSquared,
+    private FingerMetadata(float[] cSquaredNorms, float[][] cBasisProjections, float[][] dProjScalarFactor, float[][] dResSquared,
                            float[][] dRes, long[][] sgnDResTB, LshBasis basis, GraphIndex<float[]> index, RandomAccessVectorValues<float[]> ravv) {
         this.cSquaredNorms = cSquaredNorms;
+        this.cBasisProjections = cBasisProjections;
         this.dProjScalarFactor = dProjScalarFactor;
         this.dResSquared = dResSquared;
         this.dRes = dRes;
@@ -246,6 +252,10 @@ public class FingerMetadata {
         this.basis = basis;
         this.index = index;
         this.ravv = ravv.copy();
+        this.cachedCosine = new double[65];
+        for (int i = 0; i < 65; i++) {
+            cachedCosine[i] = Math.cos(Math.PI * i / 64);
+        }
     }
 
     public NodeSimilarity.EstimatedNeighborsScoreFunction estimatedScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction) {
@@ -268,8 +278,7 @@ public class FingerMetadata {
                         var qResSquaredNorm = qSquaredNorm - (t * t * cSquaredNorm);
                         var qResNorm = Math.sqrt(qResSquaredNorm);
                         var sgnDResTBs = sgnDResTB[node2];
-                        var cTB = basis.project(c); // CACHE THIS
-
+                        var cTB = cBasisProjections[node2];
 
                         // L2 distance squared is
                         // qproj - dproj L2 distance squared plus // DONE
@@ -289,12 +298,14 @@ public class FingerMetadata {
                                     qResSquaredNorm +
                                     dResSquaredComponents[i] -
                                     2 * dResNorms[i] * qResNorm * // just need to approximate cos(qres, dres)
-                                            Math.cos(Math.PI * VectorUtil.hammingDistance(new long[]{sqnqResidualProjection}, new long[]{sgnDResTBs[i]}) / 64));
+                                            cachedCosine[VectorUtil.hammingDistance(new long[]{sqnqResidualProjection}, new long[]{sgnDResTBs[i]})]);
                             results[i] = 1 / (1 + distance);
                         }
                         return results;
                     }
                 };
+            case DOT_PRODUCT:
+
             default:
                 throw new IllegalArgumentException("Unsupported similarity function " + similarityFunction);
         }
