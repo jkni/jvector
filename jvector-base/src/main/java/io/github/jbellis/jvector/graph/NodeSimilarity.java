@@ -16,6 +16,8 @@
 
 package io.github.jbellis.jvector.graph;
 
+import io.github.jbellis.jvector.util.BitSet;
+
 import java.util.Map;
 
 /** Encapsulates comparing node distances. */
@@ -62,7 +64,9 @@ public interface NodeSimilarity {
     }
 
     interface EstimatedNeighborsScoreFunction {
-        float[] similarityTo(int node2);
+        void swapBaseNode(int node2);
+        float similarityTo(int neighborIndex);
+        float[] bulkSimilarityTo(int node2, BitSet visited);
     }
 
     interface ReRanker<T> {

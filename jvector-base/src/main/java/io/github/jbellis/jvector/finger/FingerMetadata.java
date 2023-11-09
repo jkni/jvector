@@ -19,6 +19,7 @@ package io.github.jbellis.jvector.finger;
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
+import io.github.jbellis.jvector.util.BitSet;
 import io.github.jbellis.jvector.util.PoolingSupport;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorUtil;
@@ -40,7 +41,7 @@ public class FingerMetadata {
     public final float[][] dProjScalarFactor;
     public final float[][] dResSquared;
     public final float[][] dRes;
-    public final long[][] sgnDResTB;
+    public final long[][][] sgnDResTB;
     public final LshBasis basis;
     public final GraphIndex<float[]> index;
     public final RandomAccessVectorValues<float[]> ravv;
@@ -55,7 +56,7 @@ public class FingerMetadata {
         var dProjScalarFactor = new float[size][];
         var dResSquared = new float[size][];
         var dResiduals = new float[size][];
-        var sgnDResTB = new long[size][];
+        var sgnDResTB = new long[size][][];
         var cBasisProjections = new float[size][];
         var basis = LshBasis.computeFromResiduals(ravvCopy, ravvCopy.vectorValue(0).length, lowRank);
         for (int i = 0; i < size; i++) {
@@ -66,7 +67,7 @@ public class FingerMetadata {
             dProjScalarFactor[i] = new float[neighborCount];
             dResSquared[i] = new float[neighborCount];
             dResiduals[i] = new float[neighborCount];
-            sgnDResTB[i] = new long[neighborCount];
+            sgnDResTB[i] = new long[neighborCount][1];
             // for neighbor in neighbors:
 
             for (int n = 0; n < neighborCount; n++) {
@@ -91,7 +92,7 @@ public class FingerMetadata {
                         encoded |= 1L << k;
                     }
                 }
-                sgnDResTB[i][n] = encoded;
+                sgnDResTB[i][n][0] = encoded;
             }
         }
 
@@ -242,7 +243,7 @@ public class FingerMetadata {
     }
 
     private FingerMetadata(float[] cSquaredNorms, float[][] cBasisProjections, float[][] dProjScalarFactor, float[][] dResSquared,
-                           float[][] dRes, long[][] sgnDResTB, LshBasis basis, GraphIndex<float[]> index, RandomAccessVectorValues<float[]> ravv) {
+                           float[][] dRes, long[][][] sgnDResTB, LshBasis basis, GraphIndex<float[]> index, RandomAccessVectorValues<float[]> ravv) {
         this.cSquaredNorms = cSquaredNorms;
         this.cBasisProjections = cBasisProjections;
         this.dProjScalarFactor = dProjScalarFactor;
@@ -264,10 +265,57 @@ public class FingerMetadata {
                 // per query calculations
                 var qSquaredNorm = VectorUtil.dotProduct(q, q);
                 var qTB = basis.project(q);
+                var sqnqResidualProjectionArray = new long[1];
                 // return function that computes similarity to query
                 return new NodeSimilarity.EstimatedNeighborsScoreFunction() {
+                    float[] c;
+                    float cSquaredNorm;
+                    float t;
+                    float[] dProjScalarFactors;
+                    float[] dResSquaredComponents;
+                    float[] dResNorms;
+                    float qResSquaredNorm;
+                    double qResNorm;
+                    long[][] sgnDResTBs;
+                    float[] cTB;
                     @Override
-                    public float[] similarityTo(int node2) {
+                    public void swapBaseNode(int node2) {
+                        c = ravv.vectorValue(node2);
+                        cSquaredNorm = cSquaredNorms[node2];
+                        t = VectorUtil.dotProduct(q,c) / cSquaredNorm; // UPDATE TO USE CACHED PREVIOUS DISTANCE
+                        dProjScalarFactors = dProjScalarFactor[node2];
+                        dResSquaredComponents = dResSquared[node2];
+                        dResNorms = dRes[node2];
+                        qResSquaredNorm = qSquaredNorm - (t * t * cSquaredNorm);
+                        qResNorm = Math.sqrt(qResSquaredNorm);
+                        sgnDResTBs = sgnDResTB[node2];
+                        cTB = cBasisProjections[node2];
+                        // L2 distance squared is
+                        // qproj - dproj L2 distance squared plus // DONE
+                        // qres L2 norm squared plus // DONE
+                        // dres L2 norm squared minus // DONE
+                        // 2qtresdres // DONE
+                        var sqnqResidualProjection = 0L; // assuming low-rank 64
+                        for (int k = 0; k < 64; k++) {
+                            if ( qTB[k] - t * cTB[k] >= 0) {
+                                sqnqResidualProjection |= 1L << k;
+                            }
+                        }
+                        sqnqResidualProjectionArray[0] = sqnqResidualProjection;
+                    }
+
+                    @Override
+                    public float similarityTo(int neighborIndex) {
+                        var distance = (float) ((t - dProjScalarFactors[neighborIndex]) * (t - dProjScalarFactors[neighborIndex]) * cSquaredNorm +
+                                qResSquaredNorm +
+                                dResSquaredComponents[neighborIndex] -
+                                2 * dResNorms[neighborIndex] * qResNorm * // just need to approximate cos(qres, dres)
+                                        cachedCosine[VectorUtil.hammingDistance(sqnqResidualProjectionArray, sgnDResTBs[neighborIndex])]);
+                        return 1 / ( 1 + distance);
+                    }
+
+                    @Override
+                    public float[] bulkSimilarityTo(int node2, BitSet visited) {
                         //node2 is our c index
                         var c = ravv.vectorValue(node2);
                         var cSquaredNorm = cSquaredNorms[node2];
@@ -291,6 +339,7 @@ public class FingerMetadata {
                                 sqnqResidualProjection |= 1L << k;
                             }
                         }
+                        sqnqResidualProjectionArray[0] = sqnqResidualProjection;
 
                         float[] results = new float[dProjScalarFactors.length];
                         for (int i = 0; i < results.length; i++) {
@@ -298,7 +347,7 @@ public class FingerMetadata {
                                     qResSquaredNorm +
                                     dResSquaredComponents[i] -
                                     2 * dResNorms[i] * qResNorm * // just need to approximate cos(qres, dres)
-                                            cachedCosine[VectorUtil.hammingDistance(new long[]{sqnqResidualProjection}, new long[]{sgnDResTBs[i]})]);
+                                            cachedCosine[VectorUtil.hammingDistance(sqnqResidualProjectionArray, sgnDResTBs[i])]);
                             results[i] = 1 / (1 + distance);
                         }
                         return results;
