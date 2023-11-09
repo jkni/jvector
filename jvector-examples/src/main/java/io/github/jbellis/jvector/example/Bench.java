@@ -21,6 +21,7 @@ import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.example.util.DataSet;
 import io.github.jbellis.jvector.example.util.DownloadHelper;
 import io.github.jbellis.jvector.example.util.Hdf5Loader;
+import io.github.jbellis.jvector.example.util.ReaderSupplierFactory;
 import io.github.jbellis.jvector.example.util.SiftLoader;
 import io.github.jbellis.jvector.finger.FingerMetadata;
 import io.github.jbellis.jvector.graph.GraphIndex;
@@ -38,6 +39,8 @@ import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -77,60 +80,48 @@ public class Bench {
         var fingerMetadata = FingerMetadata.compute(onHeapGraph, ravv, 64);
         System.out.format("Calculated Finger metadata in %.2fs%n",
                 (System.nanoTime() - start) / 1_000_000_000.0);
-        var queryVector = ravv.vectorValue(3).clone(); // we want close to neighbors
-        var approximateFunction = fingerMetadata.estimatedScoreFunctionFor(queryVector, VectorSimilarityFunction.EUCLIDEAN);
-        for (int i = 1; i < 2; i++) {
-            var neighbors = onHeapGraph.getView().getNeighborsIterator(i);
-            var actualSimilarities = new float[neighbors.size()];
-            for (int j = 0; j < neighbors.size(); j++) {
-                var neighbor = neighbors.nextInt();
-                System.out.println(i + " neighbor is " + neighbor);
-                actualSimilarities[j] = VectorSimilarityFunction.EUCLIDEAN.compare(queryVector, ravv.vectorValue(neighbor));
-            }
-            var approximateSimilarities = approximateFunction.similarityTo(i);
-            System.out.println("Actual similarities for neighbors of " + i + " are " + Arrays.toString(actualSimilarities));
-            System.out.println("Approximate similarities for neighbors of " + i + " are " + Arrays.toString(approximateSimilarities));
-        }
 
-        /*var graphPath = testDirectory.resolve("graph" + M + efConstruction + ds.name);
+        var graphPath = testDirectory.resolve("graph" + M + efConstruction + ds.name);
         try {
             try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(graphPath)))) {
                 OnDiskGraphIndex.write(onHeapGraph, floatVectors, outputStream);
             }
             try (var onDiskGraph = new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0))) {
                 for (var cf : compressionGrid) {
-                    var compressor = getCompressor(cf, ds);
-                    CompressedVectors cv;
-                    if (compressor == null) {
-                        cv = null;
-                        System.out.format("Uncompressed vectors%n");
-                    } else {
-                        start = System.nanoTime();
-                        var quantizedVectors = compressor.encodeAll(ds.baseVectors);
-                        cv = compressor.createCompressedVectors(quantizedVectors);
-                        System.out.format("%s encoded %d vectors [%.2f MB] in %.2fs%n", compressor, ds.baseVectors.size(), (cv.ramBytesUsed() / 1024f / 1024f), (System.nanoTime() - start) / 1_000_000_000.0);
-                    }
-
-                    int queryRuns = 2;
-                    for (int overquery : efSearchOptions) {
-                        start = System.nanoTime();
+                    for (var finger : Arrays.asList(null, fingerMetadata)) {
+                        var compressor = getCompressor(cf, ds);
+                        CompressedVectors cv;
                         if (compressor == null) {
-                            // include both in-memory and on-disk search of uncompressed vectors
-                            var pqr = performQueries(ds, floatVectors, cv, onHeapGraph, topK, topK * overquery, queryRuns);
-                            var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
-                            System.out.format("  Query %s top %d/%d recall %.4f in %.2fs after %s nodes visited%n",
-                                              "(memory)", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
+                            cv = null;
+                            System.out.format("Uncompressed vectors%n");
+                        } else {
+                            start = System.nanoTime();
+                            var quantizedVectors = compressor.encodeAll(ds.baseVectors);
+                            cv = compressor.createCompressedVectors(quantizedVectors);
+                            System.out.format("%s encoded %d vectors [%.2f MB] in %.2fs%n", compressor, ds.baseVectors.size(), (cv.ramBytesUsed() / 1024f / 1024f), (System.nanoTime() - start) / 1_000_000_000.0);
                         }
-                        var pqr = performQueries(ds, floatVectors, cv, onDiskGraph, topK, topK * overquery, queryRuns);
-                        var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
-                        System.out.format("  Query %stop %d/%d recall %.4f in %.2fs after %s nodes visited%n",
-                                          compressor == null ? "(disk) " : "", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
+
+                        int queryRuns = 2;
+                        for (int overquery : efSearchOptions) {
+                            start = System.nanoTime();
+                            if (compressor == null) {
+                                // include both in-memory and on-disk search of uncompressed vectors
+                                var pqr = performQueries(ds, floatVectors, cv, finger, onHeapGraph, topK, topK * overquery, queryRuns);
+                                var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
+                                System.out.format("  Query %s - %s top %d/%d recall %.4f in %.2fs after %s nodes visited, %s approximate distances, %s exact distances%n",
+                                        "(memory)", finger == null ? "baseline" : "finger", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited, pqr.approximateCalculations, pqr.exactCalculations);
+                            }
+                            var pqr = performQueries(ds, floatVectors, cv, finger, onDiskGraph, topK, topK * overquery, queryRuns);
+                            var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
+                            System.out.format("  Query %s - %s top %d/%d recall %.4f in %.2fs after %s nodes visited, %s approximate distances, %s exact distances%n",
+                                    compressor == null ? "(disk) " : "", finger == null ? "baseline" : "finger", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited, pqr.approximateCalculations, pqr.exactCalculations);
+                        }
                     }
                 }
             }
         } finally {
             Files.deleteIfExists(graphPath);
-        }*/
+        }
     }
 
     // avoid recomputing the compressor repeatedly (this is a relatively small memory footprint)
@@ -150,10 +141,14 @@ public class Bench {
     static class ResultSummary {
         final int topKFound;
         final long nodesVisited;
+        final long approximateCalculations;
+        final long exactCalculations;
 
-        ResultSummary(int topKFound, long nodesVisited) {
+        ResultSummary(int topKFound, long nodesVisited, long approximateCalculations, long exactCalculations) {
             this.topKFound = topKFound;
             this.nodesVisited = nodesVisited;
+            this.approximateCalculations = approximateCalculations;
+            this.exactCalculations = exactCalculations;
         }
     }
 
@@ -172,32 +167,38 @@ public class Bench {
         return topKCorrect(topK, a, gt);
     }
 
-    private static ResultSummary performQueries(DataSet ds, RandomAccessVectorValues<float[]> exactVv, CompressedVectors cv, GraphIndex<float[]> index, int topK, int efSearch, int queryRuns) {
+    private static ResultSummary performQueries(DataSet ds, RandomAccessVectorValues<float[]> exactVv, CompressedVectors cv, FingerMetadata finger, GraphIndex<float[]> index, int topK, int efSearch, int queryRuns) {
         assert efSearch >= topK;
         LongAdder topKfound = new LongAdder();
         LongAdder nodesVisited = new LongAdder();
+        LongAdder approximateCalculations = new LongAdder();
+        LongAdder exactCalculations = new LongAdder();
         for (int k = 0; k < queryRuns; k++) {
             IntStream.range(0, ds.queryVectors.size()).parallel().forEach(i -> {
                 var queryVector = ds.queryVectors.get(i);
                 SearchResult sr;
                 if (cv != null) {
                     var view = index.getView();
+                    var estimatedScoreFunction = finger == null ? null : finger.estimatedScoreFunctionFor(queryVector, ds.similarityFunction);
                     NodeSimilarity.ApproximateScoreFunction sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
                     NodeSimilarity.ReRanker<float[]> rr = (j, vectors) -> ds.similarityFunction.compare(queryVector, vectors.get(j));
                     sr = new GraphSearcher.Builder<>(view)
                             .build()
-                            .search(sf, rr, efSearch, Bits.ALL);
+                            .search(sf, rr, estimatedScoreFunction, efSearch, Bits.ALL);
                 } else {
-                    sr = GraphSearcher.search(queryVector, efSearch, exactVv, VectorEncoding.FLOAT32, ds.similarityFunction, index, Bits.ALL);
+                    var estimatedScoreFunction = finger == null ? null : finger.estimatedScoreFunctionFor(queryVector, ds.similarityFunction);
+                    sr = GraphSearcher.search(queryVector, efSearch, exactVv, VectorEncoding.FLOAT32, ds.similarityFunction, estimatedScoreFunction, index, Bits.ALL);
                 }
 
                 var gt = ds.groundTruth.get(i);
                 var n = topKCorrect(topK, sr.getNodes(), gt);
                 topKfound.add(n);
                 nodesVisited.add(sr.getVisitedCount());
+                approximateCalculations.add(sr.getApproximateCalculations());
+                exactCalculations.add(sr.getExactCalculations());
             });
         }
-        return new ResultSummary((int) topKfound.sum(), nodesVisited.sum()); // TODO do we care enough about visited count to hack it back into searcher?
+        return new ResultSummary((int) topKfound.sum(), nodesVisited.sum(), approximateCalculations.sum(), exactCalculations.sum());
     }
 
     public static void main(String[] args) throws IOException {
@@ -205,7 +206,7 @@ public class Bench {
 
         var mGrid = List.of(16); // List.of(8, 12, 16, 24, 32, 48, 64);
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
-        var efSearchGrid = List.of(1, 2);
+        var efSearchGrid = List.of(1, 2, 4);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
                 null, // uncompressed
                 ds -> BinaryQuantization.compute(ds.getBaseRavv()),

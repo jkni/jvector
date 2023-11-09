@@ -25,11 +25,15 @@ public final class SearchResult {
     private final NodeScore[] nodes;
     private final BitSet visited;
     private final int visitedCount;
+    private final int approximateCalculations;
+    private final int exactCalculations;
 
-    public SearchResult(NodeScore[] nodes, BitSet visited, int visitedCount) {
+    public SearchResult(NodeScore[] nodes, BitSet visited, int visitedCount, int approximateCalculations, int exactCalculations) {
         this.nodes = nodes;
         this.visited = visited;
         this.visitedCount = visitedCount;
+        this.approximateCalculations = approximateCalculations;
+        this.exactCalculations = exactCalculations;
     }
 
     /**
@@ -52,6 +56,14 @@ public final class SearchResult {
      */
     public int getVisitedCount() {
         return visitedCount;
+    }
+
+    public int getApproximateCalculations() {
+        return approximateCalculations;
+    }
+
+    public int getExactCalculations() {
+        return exactCalculations;
     }
 
     public static final class NodeScore {

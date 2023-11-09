@@ -71,6 +71,21 @@ public class GraphSearcher<T> {
      * Convenience function for simple one-off searches.  It is caller's responsibility to make sure that it
      * is the unique owner of the vectors instance passed in here.
      */
+    public static <T> SearchResult search(T targetVector, int topK, RandomAccessVectorValues<T> vectors, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction, NodeSimilarity.EstimatedNeighborsScoreFunction estimatedScoreFunction, GraphIndex<T> graph, Bits acceptOrds) {
+        var searcher = new GraphSearcher.Builder<>(graph.getView()).withConcurrentUpdates().build();
+        NodeSimilarity.ExactScoreFunction scoreFunction = i -> {
+            switch (vectorEncoding) {
+                case BYTE:
+                    return similarityFunction.compare((byte[]) targetVector, (byte[]) vectors.vectorValue(i));
+                case FLOAT32:
+                    return similarityFunction.compare((float[]) targetVector, (float[]) vectors.vectorValue(i));
+                default:
+                    throw new RuntimeException("Unsupported vector encoding: " + vectorEncoding);
+            }
+        };
+        return searcher.search(scoreFunction, null, estimatedScoreFunction, topK, acceptOrds);
+    }
+
     public static <T> SearchResult search(T targetVector, int topK, RandomAccessVectorValues<T> vectors, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction, GraphIndex<T> graph, Bits acceptOrds) {
         var searcher = new GraphSearcher.Builder<>(graph.getView()).withConcurrentUpdates().build();
         NodeSimilarity.ExactScoreFunction scoreFunction = i -> {
@@ -83,7 +98,7 @@ public class GraphSearcher<T> {
                     throw new RuntimeException("Unsupported vector encoding: " + vectorEncoding);
             }
         };
-        return searcher.search(scoreFunction, null, topK, acceptOrds);
+        return searcher.search(scoreFunction, null, null, topK, acceptOrds);
     }
 
     /** Builder */
@@ -125,7 +140,17 @@ public class GraphSearcher<T> {
                                int topK,
                                float threshold,
                                Bits acceptOrds) {
-        return searchInternal(scoreFunction, reRanker, null, topK, threshold, view.entryNode(), acceptOrds);
+        return search(scoreFunction, reRanker, null, topK, threshold, acceptOrds);
+    }
+
+    @Experimental
+    public SearchResult search(NodeSimilarity.ScoreFunction scoreFunction,
+                               NodeSimilarity.ReRanker<T> reRanker,
+                               NodeSimilarity.EstimatedNeighborsScoreFunction estimatedScoreFunction,
+                               int topK,
+                               float threshold,
+                               Bits acceptOrds) {
+        return searchInternal(scoreFunction, reRanker, estimatedScoreFunction, topK, threshold, view.entryNode(), acceptOrds);
     }
 
     /**
@@ -145,6 +170,15 @@ public class GraphSearcher<T> {
                                Bits acceptOrds)
     {
         return search(scoreFunction, reRanker, topK, 0.0f, acceptOrds);
+    }
+
+    public SearchResult search(NodeSimilarity.ScoreFunction scoreFunction,
+                               NodeSimilarity.ReRanker<T> reRanker,
+                               NodeSimilarity.EstimatedNeighborsScoreFunction estimatedScoreFunction,
+                               int topK,
+                               Bits acceptOrds)
+    {
+        return search(scoreFunction, reRanker, estimatedScoreFunction, topK, 0.0f, acceptOrds);
     }
 
     /**
@@ -174,7 +208,7 @@ public class GraphSearcher<T> {
         prepareScratchState(view.size());
         var scoreTracker = threshold > 0 ? new ScoreTracker.NormalDistributionTracker(threshold) : new ScoreTracker.NoOpTracker();
         if (ep < 0) {
-            return new SearchResult(new SearchResult.NodeScore[0], visited, 0);
+            return new SearchResult(new SearchResult.NodeScore[0], visited, 0, 0, 0);
         }
 
         acceptOrds = Bits.intersectionOf(acceptOrds, view.liveNodes());
@@ -184,6 +218,8 @@ public class GraphSearcher<T> {
         var resultsQueue = new NodeQueue(new BoundedLongHeap(min(1024, topK), topK), NodeQueue.Order.MIN_HEAP);
         Map<Integer, T> vectorsEncountered = scoreFunction.isExact() ? null : new java.util.HashMap<>();
         int numVisited = 0;
+        int exactCalculations = 0;
+        int approximateCalculations = 0;
 
         float score = scoreFunction.similarityTo(ep);
         visited.set(ep);
@@ -218,11 +254,13 @@ public class GraphSearcher<T> {
             float[] friendSimilarities = new float[0];
             if (estimatedScoreFunction != null) {
                 friendSimilarities = estimatedScoreFunction.similarityTo(topCandidateNode);
+                approximateCalculations += friendSimilarities.length;
             }
             var iteration = 0;
             float friendSimilarity;
             for (var it = view.getNeighborsIterator(topCandidateNode); it.hasNext(); ) {
                 int friendOrd = it.nextInt();
+                iteration++;
                 if (visited.getAndSet(friendOrd)) {
                     continue;
                 }
@@ -230,13 +268,17 @@ public class GraphSearcher<T> {
 
                 if (estimatedScoreFunction == null) {
                     friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                    exactCalculations++;
                 } else {
-                    friendSimilarity = friendSimilarities[iteration];
-                    iteration++;
+                    friendSimilarity = friendSimilarities[iteration-1];
                 }
                 scoreTracker.track(friendSimilarity);
 
                 if (friendSimilarity >= minAcceptedSimilarity) {
+                    if (estimatedScoreFunction != null) {
+                        friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                        exactCalculations++;
+                    }
                     candidates.push(friendOrd, friendSimilarity);
                     if (acceptOrds.get(friendOrd) && friendSimilarity >= threshold) {
                         if (resultsQueue.push(friendOrd, friendSimilarity) && resultsQueue.size() >= topK) {
@@ -249,7 +291,7 @@ public class GraphSearcher<T> {
 
         assert resultsQueue.size() <= topK;
         SearchResult.NodeScore[] nodes = extractScores(scoreFunction, reRanker, resultsQueue, vectorsEncountered);
-        return new SearchResult(nodes, visited, numVisited);
+        return new SearchResult(nodes, visited, numVisited, approximateCalculations, exactCalculations);
     }
 
     private static <T> SearchResult.NodeScore[] extractScores(NodeSimilarity.ScoreFunction sf,
