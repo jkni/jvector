@@ -235,8 +235,9 @@ public class GraphSearcher<T> {
         if (resultsQueue.size() >= topK) {
             minAcceptedSimilarity = resultsQueue.topScore();
         }
-
+        var current = 0;
         while (candidates.size() > 0 && !resultsQueue.incomplete()) {
+            current++;
             // get the best candidate (closest or best scoring)
             if (candidates.topScore() < minAcceptedSimilarity) {
                 break;
@@ -252,7 +253,7 @@ public class GraphSearcher<T> {
                 vectorsEncountered.put(topCandidateNode, view.getVector(topCandidateNode));
             }
             /*float[] friendSimilarities = new float[0];*/
-            if (estimatedScoreFunction != null) {
+            if (estimatedScoreFunction != null && current > 5) {
                 /*friendSimilarities = estimatedScoreFunction.bulkSimilarityTo(topCandidateNode, visited);
                 approximateCalculations += friendSimilarities.length;*/
                 estimatedScoreFunction.swapBaseNode(topCandidateNode);
@@ -268,7 +269,7 @@ public class GraphSearcher<T> {
                 }
                 numVisited++;
 
-                if (estimatedScoreFunction == null) {
+                if (estimatedScoreFunction == null || current <= 5) {
                     friendSimilarity = scoreFunction.similarityTo(friendOrd);
                     exactCalculations++;
                 } else {
@@ -279,7 +280,7 @@ public class GraphSearcher<T> {
                 scoreTracker.track(friendSimilarity);
 
                 if (friendSimilarity >= minAcceptedSimilarity) {
-                    if (estimatedScoreFunction != null) {
+                    if (estimatedScoreFunction != null && current > 5) {
                         friendSimilarity = scoreFunction.similarityTo(friendOrd);
                         exactCalculations++;
                     }

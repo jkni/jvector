@@ -63,6 +63,31 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
         }
     }
 
+    protected static abstract class NoCachingDecoder extends PQDecoder {
+        float[] queryVector;
+        float[] scratch;
+        ProductQuantization pq;
+
+        protected NoCachingDecoder(PQVectors cv, float[] query, VectorSimilarityFunction vsf) {
+            super(cv);
+            float[] center = cv.pq.getCenter();
+            var centeredQuery = center == null ? query : VectorUtil.sub(query, center);
+            this.queryVector = centeredQuery;
+            this.pq = cv.pq;
+            this.scratch = new float[pq.getSubspaceCount()];
+        }
+
+        protected float decodedSimilarity(byte[] encoded) {
+            for (int m = 0; m < scratch.length; ++m) {
+                int offset = pq.subvectorSizesAndOffsets[m][1];
+                int centroidIndex = Byte.toUnsignedInt(encoded[m]);
+                float[] centroidSubvector = pq.codebooks[m][centroidIndex];
+                scratch[m] = VectorUtil.squareDistance(centroidSubvector, 0, queryVector, offset, centroidSubvector.length);
+            }
+            return VectorUtil.sum(scratch);
+        }
+    }
+
     static class DotProductDecoder extends CachingDecoder {
         public DotProductDecoder(PQVectors cv, float[] query) {
             super(cv, query, VectorSimilarityFunction.DOT_PRODUCT);
