@@ -260,12 +260,12 @@ public class FingerMetadata {
     }
 
     public NodeSimilarity.EstimatedNeighborsScoreFunction estimatedScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction) {
+        // per query calculations
+        var qSquaredNorm = VectorUtil.dotProduct(q, q);
+        var qTB = basis.project(q);
+        var sqnqResidualProjectionArray = new long[1];
         switch (similarityFunction) {
             case EUCLIDEAN:
-                // per query calculations
-                var qSquaredNorm = VectorUtil.dotProduct(q, q);
-                var qTB = basis.project(q);
-                var sqnqResidualProjectionArray = new long[1];
                 // return function that computes similarity to query
                 return new NodeSimilarity.EstimatedNeighborsScoreFunction() {
                     float[] c;
@@ -354,7 +354,59 @@ public class FingerMetadata {
                     }
                 };
             case DOT_PRODUCT:
+                return new NodeSimilarity.EstimatedNeighborsScoreFunction() {
+                    float[] c;
+                    float cSquaredNorm;
+                    float t;
+                    float[] dProjScalarFactors;
+                    float[] dResSquaredComponents;
+                    float[] dResNorms;
+                    float qResSquaredNorm;
+                    double qResNorm;
+                    long[][] sgnDResTBs;
+                    float[] cTB;
+                    @Override
+                    public void swapBaseNode(int node2) {
+                        c = ravv.vectorValue(node2);
+                        cSquaredNorm = cSquaredNorms[node2];
+                        t = VectorUtil.dotProduct(q,c) / cSquaredNorm; // UPDATE TO USE CACHED PREVIOUS DISTANCE
+                        dProjScalarFactors = dProjScalarFactor[node2];
+                        dResSquaredComponents = dResSquared[node2];
+                        dResNorms = dRes[node2];
+                        qResSquaredNorm = qSquaredNorm - (t * t * cSquaredNorm);
+                        qResNorm = Math.sqrt(qResSquaredNorm);
+                        sgnDResTBs = sgnDResTB[node2];
+                        cTB = cBasisProjections[node2];
+                        // L2 distance squared is
+                        // qproj - dproj L2 distance squared plus // DONE
+                        // qres L2 norm squared plus // DONE
+                        // dres L2 norm squared minus // DONE
+                        // 2qtresdres // DONE
+                        var sqnqResidualProjection = 0L; // assuming low-rank 64
+                        for (int k = 0; k < 64; k++) {
+                            if ( qTB[k] - t * cTB[k] >= 0) {
+                                sqnqResidualProjection |= 1L << k;
+                            }
+                        }
+                        sqnqResidualProjectionArray[0] = sqnqResidualProjection;
+                    }
 
+                    @Override
+                    public float similarityTo(int neighborIndex) {
+                        // qprojt (dot) dproj + qrest (dot) dres
+                        // qproj is t * c, dproj is bc, pull factors out, cSquaredNorm * t * b
+                        var temp2 = t * cSquaredNorm * dProjScalarFactors[neighborIndex];
+                        // qrest (dot) dres follows
+                        var temp = dResNorms[neighborIndex] * qResNorm * // just need to approximate cos(qres, dres)
+                                cachedCosine[VectorUtil.hammingDistance(sqnqResidualProjectionArray, sgnDResTBs[neighborIndex])];
+                        return (1 + (float) (temp2 + temp))/2;
+                    }
+
+                    @Override
+                    public float[] bulkSimilarityTo(int node2, BitSet visited) {
+                        throw new UnsupportedOperationException();
+                    }
+                };
             default:
                 throw new IllegalArgumentException("Unsupported similarity function " + similarityFunction);
         }

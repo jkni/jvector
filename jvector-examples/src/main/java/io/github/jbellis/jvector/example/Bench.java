@@ -241,12 +241,12 @@ public class Bench {
                 // large files not yet supported
                 // "hdf5/deep-image-96-angular.hdf5",
                 // "hdf5/gist-960-euclidean.hdf5",
-                //"glove-25-angular.hdf5",
-                //"glove-50-angular.hdf5",
-                //"lastfm-64-dot.hdf5",
-                //"glove-100-angular.hdf5",
-                //"glove-200-angular.hdf5",
-                //"nytimes-256-angular.hdf5",
+                "glove-25-angular.hdf5",
+                "glove-50-angular.hdf5",
+                "lastfm-64-dot.hdf5",
+                "glove-100-angular.hdf5",
+                "glove-200-angular.hdf5",
+                "nytimes-256-angular.hdf5",
                 "sift-128-euclidean.hdf5");
         for (var f : files) {
             if (pattern.matcher(f).find()) {

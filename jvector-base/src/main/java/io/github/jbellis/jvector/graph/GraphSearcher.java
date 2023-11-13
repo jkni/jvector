@@ -198,6 +198,7 @@ public class GraphSearcher<T> {
                                 int ep,
                                 Bits acceptOrds)
     {
+        var exactDepth = 2;
         if (!scoreFunction.isExact() && reRanker == null) {
             throw new IllegalArgumentException("Either scoreFunction must be exact, or reRanker must not be null");
         }
@@ -253,7 +254,7 @@ public class GraphSearcher<T> {
                 vectorsEncountered.put(topCandidateNode, view.getVector(topCandidateNode));
             }
             /*float[] friendSimilarities = new float[0];*/
-            if (estimatedScoreFunction != null && current > 5) {
+            if (estimatedScoreFunction != null && current > exactDepth) {
                 /*friendSimilarities = estimatedScoreFunction.bulkSimilarityTo(topCandidateNode, visited);
                 approximateCalculations += friendSimilarities.length;*/
                 estimatedScoreFunction.swapBaseNode(topCandidateNode);
@@ -269,7 +270,7 @@ public class GraphSearcher<T> {
                 }
                 numVisited++;
 
-                if (estimatedScoreFunction == null || current <= 5) {
+                if (estimatedScoreFunction == null || current <= exactDepth) {
                     friendSimilarity = scoreFunction.similarityTo(friendOrd);
                     exactCalculations++;
                 } else {
@@ -280,7 +281,8 @@ public class GraphSearcher<T> {
                 scoreTracker.track(friendSimilarity);
 
                 if (friendSimilarity >= minAcceptedSimilarity) {
-                    if (estimatedScoreFunction != null && current > 5) {
+                    // we're recalculating pretty much all approximate calculations, so what if we just don't?
+                    if (estimatedScoreFunction != null && current > exactDepth) {
                         friendSimilarity = scoreFunction.similarityTo(friendOrd);
                         exactCalculations++;
                     }
