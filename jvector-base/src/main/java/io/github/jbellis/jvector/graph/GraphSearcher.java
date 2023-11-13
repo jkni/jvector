@@ -199,6 +199,7 @@ public class GraphSearcher<T> {
                                 Bits acceptOrds)
     {
         var exactDepth = 2;
+        var dotProductCache = estimatedScoreFunction == null ? null : estimatedScoreFunction.getDotProductCache();
         if (!scoreFunction.isExact() && reRanker == null) {
             throw new IllegalArgumentException("Either scoreFunction must be exact, or reRanker must not be null");
         }
@@ -270,8 +271,11 @@ public class GraphSearcher<T> {
                 }
                 numVisited++;
 
-                if (estimatedScoreFunction == null || current <= exactDepth) {
+                if (estimatedScoreFunction == null) {
                     friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                    exactCalculations++;
+                } else if (current <= exactDepth) {
+                    friendSimilarity = scoreFunction.cachingSimilarityTo(friendOrd, dotProductCache);
                     exactCalculations++;
                 } else {
                    //friendSimilarity = friendSimilarities[iteration - 1];
@@ -281,9 +285,8 @@ public class GraphSearcher<T> {
                 scoreTracker.track(friendSimilarity);
 
                 if (friendSimilarity >= minAcceptedSimilarity) {
-                    // we're recalculating pretty much all approximate calculations, so what if we just don't?
                     if (estimatedScoreFunction != null && current > exactDepth) {
-                        friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                        friendSimilarity = scoreFunction.cachingSimilarityTo(friendOrd, dotProductCache);
                         exactCalculations++;
                     }
                     candidates.push(friendOrd, friendSimilarity);

@@ -19,6 +19,8 @@ import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorUtil;
 
+import java.util.Map;
+
 /**
  * Performs similarity comparisons with compressed vectors without decoding them
  */
@@ -82,9 +84,11 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
                 int offset = pq.subvectorSizesAndOffsets[m][1];
                 int centroidIndex = Byte.toUnsignedInt(encoded[m]);
                 float[] centroidSubvector = pq.codebooks[m][centroidIndex];
-                scratch[m] = VectorUtil.squareDistance(centroidSubvector, 0, queryVector, offset, centroidSubvector.length);
+                //scratch[m] = VectorUtil.squareDistance(centroidSubvector, 0, queryVector, offset, centroidSubvector.length);
+                scratch[m] = VectorUtil.dotProduct(centroidSubvector, 0, queryVector, offset, centroidSubvector.length);
             }
             return VectorUtil.sum(scratch);
+
         }
     }
 
@@ -96,6 +100,13 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
         @Override
         public float similarityTo(int node2) {
             return (1 + decodedSimilarity(cv.get(node2))) / 2;
+        }
+
+        @Override
+        public float cachingSimilarityTo(int node2, Map<Integer, Float> dotProductCache) {
+            var similarity = decodedSimilarity(cv.get(node2));
+            dotProductCache.put(node2, similarity);
+            return (1 + similarity) / 2 ;
         }
     }
 

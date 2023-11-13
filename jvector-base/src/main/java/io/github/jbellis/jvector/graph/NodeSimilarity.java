@@ -45,6 +45,8 @@ public interface NodeSimilarity {
         boolean isExact();
 
         float similarityTo(int node2);
+
+        float cachingSimilarityTo(int node2, Map<Integer, Float> dotProductCache);
     }
 
     interface ExactScoreFunction extends ScoreFunction {
@@ -53,6 +55,10 @@ public interface NodeSimilarity {
         }
 
         float similarityTo(int node2);
+        default float cachingSimilarityTo(int node2, Map<Integer, Float> dotProductCache) {
+            return similarityTo(node2);
+        }
+
     }
 
     interface ApproximateScoreFunction extends ScoreFunction {
@@ -61,12 +67,16 @@ public interface NodeSimilarity {
         }
 
         float similarityTo(int node2);
+        default float cachingSimilarityTo(int node2, Map<Integer, Float> dotProductCache) {
+            return similarityTo(node2);
+        }
     }
 
     interface EstimatedNeighborsScoreFunction {
         void swapBaseNode(int node2);
         float similarityTo(int neighborIndex);
         float[] bulkSimilarityTo(int node2, BitSet visited);
+        Map<Integer, Float> getDotProductCache();
     }
 
     interface ReRanker<T> {

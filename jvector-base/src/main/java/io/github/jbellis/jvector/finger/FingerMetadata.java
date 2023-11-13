@@ -30,7 +30,9 @@ import org.apache.commons.math3.linear.RealVector;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -352,6 +354,11 @@ public class FingerMetadata {
                         }
                         return results;
                     }
+
+                    @Override
+                    public Map<Integer, Float> getDotProductCache() {
+                        throw new UnsupportedOperationException();
+                    }
                 };
             case DOT_PRODUCT:
                 return new NodeSimilarity.EstimatedNeighborsScoreFunction() {
@@ -359,29 +366,23 @@ public class FingerMetadata {
                     float cSquaredNorm;
                     float t;
                     float[] dProjScalarFactors;
-                    float[] dResSquaredComponents;
                     float[] dResNorms;
                     float qResSquaredNorm;
                     double qResNorm;
                     long[][] sgnDResTBs;
                     float[] cTB;
+                    public final HashMap<Integer, Float> dotProductCache = new HashMap<>();
                     @Override
                     public void swapBaseNode(int node2) {
                         c = ravv.vectorValue(node2);
                         cSquaredNorm = cSquaredNorms[node2];
-                        t = VectorUtil.dotProduct(q,c) / cSquaredNorm; // UPDATE TO USE CACHED PREVIOUS DISTANCE
+                        t = dotProductCache.computeIfAbsent(node2, dummy -> VectorUtil.dotProduct(q,c)) / cSquaredNorm; // UPDATE TO USE CACHED PREVIOUS DISTANCE
                         dProjScalarFactors = dProjScalarFactor[node2];
-                        dResSquaredComponents = dResSquared[node2];
                         dResNorms = dRes[node2];
                         qResSquaredNorm = qSquaredNorm - (t * t * cSquaredNorm);
                         qResNorm = Math.sqrt(qResSquaredNorm);
                         sgnDResTBs = sgnDResTB[node2];
                         cTB = cBasisProjections[node2];
-                        // L2 distance squared is
-                        // qproj - dproj L2 distance squared plus // DONE
-                        // qres L2 norm squared plus // DONE
-                        // dres L2 norm squared minus // DONE
-                        // 2qtresdres // DONE
                         var sqnqResidualProjection = 0L; // assuming low-rank 64
                         for (int k = 0; k < 64; k++) {
                             if ( qTB[k] - t * cTB[k] >= 0) {
@@ -405,6 +406,11 @@ public class FingerMetadata {
                     @Override
                     public float[] bulkSimilarityTo(int node2, BitSet visited) {
                         throw new UnsupportedOperationException();
+                    }
+
+                    @Override
+                    public Map<Integer, Float> getDotProductCache() {
+                        return dotProductCache;
                     }
                 };
             default:
