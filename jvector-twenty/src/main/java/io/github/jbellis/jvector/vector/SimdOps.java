@@ -705,6 +705,7 @@ final class SimdOps {
         float[] result = new float[dProjScalarFactors.length];
         var tCsqNorm = FloatVector.broadcast(FloatVector.SPECIES_PREFERRED, tcSquaredNorm);
         var qResNormVector = FloatVector.broadcast(FloatVector.SPECIES_PREFERRED, (float)qResNorm);
+
         for (int i = 0; i < dProjScalarFactors.length; i += FloatVector.SPECIES_PREFERRED.length()) {
             var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, dProjScalarFactors.length);
             var dProjScalarFactor = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dProjScalarFactors, i, mask);

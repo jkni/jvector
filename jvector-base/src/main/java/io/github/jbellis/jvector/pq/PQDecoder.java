@@ -19,6 +19,7 @@ import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorUtil;
 
+import java.util.Arrays;
 import java.util.Map;
 
 /**
@@ -65,6 +66,39 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
         }
     }
 
+    protected static abstract class LazyCachingDecoder extends PQDecoder {
+        float[] queryVector;
+        ProductQuantization pq;
+        protected final float[] partialSums;
+        float[] scratch;
+
+        protected LazyCachingDecoder(PQVectors cv, float[] query, VectorSimilarityFunction vsf) {
+            super(cv);
+            pq = this.cv.pq;
+            partialSums = cv.reusablePartialSums();
+            Arrays.fill(partialSums, Float.MIN_VALUE);
+
+            float[] center = pq.getCenter();
+            queryVector = center == null ? query : VectorUtil.sub(query, center);
+            scratch = new float[pq.getSubspaceCount()];
+        }
+
+        protected float decodedSimilarity(byte[] encoded) {
+            for (int i = 0; i < pq.getSubspaceCount(); i++) {
+                int offset = pq.subvectorSizesAndOffsets[i][1];
+                int baseOffset = i * ProductQuantization.CLUSTERS;
+                var codepoint = Byte.toUnsignedInt(encoded[i]);
+                var currentVal = partialSums[baseOffset + codepoint];
+                if (currentVal == Float.MIN_VALUE) {
+                    currentVal = VectorUtil.dotProduct(pq.codebooks[i][codepoint], 0, queryVector, offset, pq.codebooks[i][codepoint].length);
+                    partialSums[baseOffset + codepoint] = currentVal;
+                }
+                scratch[i] = currentVal;
+            }
+            return VectorUtil.sum(scratch);
+        }
+    }
+
     protected static abstract class NoCachingDecoder extends PQDecoder {
         float[] queryVector;
         float[] scratch;
@@ -80,6 +114,7 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
         }
 
         protected float decodedSimilarity(byte[] encoded) {
+            // hacked to just be dot product
             for (int m = 0; m < scratch.length; ++m) {
                 int offset = pq.subvectorSizesAndOffsets[m][1];
                 int centroidIndex = Byte.toUnsignedInt(encoded[m]);

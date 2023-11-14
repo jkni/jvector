@@ -67,7 +67,7 @@ public class Bench {
                                    Path testDirectory) throws IOException
     {
         var floatVectors = new ListRandomAccessVectorValues(ds.baseVectors, ds.baseVectors.get(0).length);
-        var topK = 10;
+        var topK = ds.groundTruth.get(0).size();
 
         var start = System.nanoTime();
         var builder = new GraphIndexBuilder<>(floatVectors, VectorEncoding.FLOAT32, ds.similarityFunction, M, efConstruction, 1.2f, 1.2f);
@@ -206,7 +206,7 @@ public class Bench {
 
         var mGrid = List.of(16); // List.of(8, 12, 16, 24, 32, 48, 64);
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
-        var efSearchGrid = List.of(1, 2, 4);
+        var efSearchGrid = List.of(6, 1, 2, 3, 4);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
                 //null, // uncompressed
                 //ds -> BinaryQuantization.compute(ds.getBaseRavv()),
