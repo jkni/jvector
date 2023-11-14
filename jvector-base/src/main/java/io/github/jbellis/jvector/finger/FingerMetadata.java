@@ -47,7 +47,7 @@ public class FingerMetadata {
     public final LshBasis basis;
     public final GraphIndex<float[]> index;
     public final RandomAccessVectorValues<float[]> ravv;
-    private final double[] cachedCosine;
+    public final double[] cachedCosine;
 
     public static FingerMetadata compute(GraphIndex<float[]> index, RandomAccessVectorValues<float[]> ravv, int lowRank) {
         var ravvPool = ravv.isValueShared() ? PoolingSupport.newThreadBased(ravv::copy) : PoolingSupport.newNoPooling(ravv);
@@ -317,7 +317,7 @@ public class FingerMetadata {
                     }
 
                     @Override
-                    public float[] bulkSimilarityTo(int node2, BitSet visited) {
+                    public float[] bulkSimilarityTo(int node2, float topScore, BitSet visited) {
                         //node2 is our c index
                         var c = ravv.vectorValue(node2);
                         var cSquaredNorm = cSquaredNorms[node2];
@@ -358,6 +358,16 @@ public class FingerMetadata {
                     @Override
                     public Map<Integer, Float> getDotProductCache() {
                         throw new UnsupportedOperationException();
+                    }
+
+                    @Override
+                    public float getQSquaredNorm() {
+                        return qSquaredNorm;
+                    }
+
+                    @Override
+                    public float[] getQTB() {
+                        return qTB;
                     }
                 };
             case DOT_PRODUCT:
@@ -404,13 +414,23 @@ public class FingerMetadata {
                     }
 
                     @Override
-                    public float[] bulkSimilarityTo(int node2, BitSet visited) {
-                        throw new UnsupportedOperationException();
+                    public float[] bulkSimilarityTo(int node2, float dotProduct, BitSet visited) {
+                        return VectorUtil.fingerDotProduct(FingerMetadata.this, this, node2, dotProduct);
                     }
 
                     @Override
                     public Map<Integer, Float> getDotProductCache() {
                         return dotProductCache;
+                    }
+
+                    @Override
+                    public float getQSquaredNorm() {
+                        return qSquaredNorm;
+                    }
+
+                    @Override
+                    public float[] getQTB() {
+                        return qTB;
                     }
                 };
             default:

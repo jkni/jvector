@@ -16,6 +16,8 @@
 
 package io.github.jbellis.jvector.vector;
 
+import io.github.jbellis.jvector.finger.FingerMetadata;
+import io.github.jbellis.jvector.graph.NodeSimilarity;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -657,5 +659,65 @@ final class SimdOps {
         }
 
         return res;
+    }
+
+    public static float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct) {
+        float[] c = metadata.ravv.vectorValue(node2);
+        float cSquaredNorm = metadata.cSquaredNorms[node2];
+        float t = dotProduct / cSquaredNorm;
+        float[] dProjScalarFactors = metadata.dProjScalarFactor[node2];
+        float[] dResNorms = metadata.dRes[node2];
+        float qResSquaredNorm = ensf.getQSquaredNorm() - (t * t * cSquaredNorm);
+        double qResNorm = Math.sqrt(qResSquaredNorm);
+        long[][] sgnDResTBs = metadata.sgnDResTB[node2];
+        float[] cTB = metadata.cBasisProjections[node2];
+        var sqnqResidualProjection = 0L; // assuming low-rank 64
+        var qTB = ensf.getQTB();
+        for (int k = 0; k < 64; k++) {
+            if ( qTB[k] - t * cTB[k] >= 0) {
+                sqnqResidualProjection |= 1L << k;
+            }
+        }
+        var sqnqResidualProjectionArray = new long[1];
+        sqnqResidualProjectionArray[0] = sqnqResidualProjection;
+
+        // calculate all the hamming distances between sqnqResidualProjection and sgnDResTBs
+        var cosines = new float[sgnDResTBs.length];
+        for (int i = 0; i < sgnDResTBs.length; i++) {
+            cosines[i] = (float) metadata.cachedCosine[VectorUtil.hammingDistance(sqnqResidualProjectionArray, sgnDResTBs[i])];
+        }
+
+
+        float[] result = new float[dProjScalarFactors.length];
+        int vectorizedLength = FloatVector.SPECIES_PREFERRED.loopBound(dProjScalarFactors.length);
+
+        for (int i = 0; i < vectorizedLength; i += FloatVector.SPECIES_PREFERRED.length()) {
+            // broadcast t * cSquaredNorm into an array
+            var tCsqNorm = FloatVector.broadcast(FloatVector.SPECIES_PREFERRED, t * cSquaredNorm);
+            var dProjScalarFactor = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dProjScalarFactors, i);
+            // multiply tCsqNorm by dProjScalarFactor
+            var tCsqNormTimesDProjScalarFactor = tCsqNorm.mul(dProjScalarFactor);
+            // broadcast qResNorm
+            var qResNormVector = FloatVector.broadcast(FloatVector.SPECIES_PREFERRED, (float) qResNorm);
+            // load dResNorms
+            var dResNormVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dResNorms, i);
+            // multiply qResNormVector by dResNormVector
+            var qResNormTimesDResNorm = qResNormVector.mul(dResNormVector);
+            var cosineVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, cosines, i);
+            var temp = cosineVector.mul(qResNormTimesDResNorm);
+            temp = temp.add(tCsqNormTimesDProjScalarFactor);
+            //temp = temp.add(1);
+            //temp = temp.div(2);
+            temp.intoArray(result, i);
+       }
+
+        // Process the tail
+        for (int i = vectorizedLength; i < result.length; i++) {
+            var temp2 = t * cSquaredNorm * dProjScalarFactors[i];
+            var temp = dResNorms[i] * qResNorm * cosines[i];
+            result[i] = (float) (temp2 + temp);
+            //result[i] = (1 + (float) (temp2 + temp)) / 2;
+        }
+        return result;
     }
 }

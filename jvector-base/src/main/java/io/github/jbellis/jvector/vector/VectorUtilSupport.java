@@ -24,6 +24,9 @@
 
 package io.github.jbellis.jvector.vector;
 
+import io.github.jbellis.jvector.finger.FingerMetadata;
+import io.github.jbellis.jvector.graph.NodeSimilarity;
+
 import java.util.List;
 
 /**
@@ -89,4 +92,6 @@ public interface VectorUtilSupport {
   public float assembleAndSum(float[] data, int baseIndex, byte[] baseOffsets);
 
   public int hammingDistance(long[] v1, long[] v2);
+
+  float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct);
 }

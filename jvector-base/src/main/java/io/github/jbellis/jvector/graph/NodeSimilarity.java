@@ -75,8 +75,10 @@ public interface NodeSimilarity {
     interface EstimatedNeighborsScoreFunction {
         void swapBaseNode(int node2);
         float similarityTo(int neighborIndex);
-        float[] bulkSimilarityTo(int node2, BitSet visited);
+        float[] bulkSimilarityTo(int node2, float dotProduct, BitSet visited);
         Map<Integer, Float> getDotProductCache();
+        float getQSquaredNorm();
+        float[] getQTB();
     }
 
     interface ReRanker<T> {

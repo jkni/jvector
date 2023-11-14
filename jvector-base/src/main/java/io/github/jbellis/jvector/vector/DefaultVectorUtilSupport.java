@@ -24,6 +24,9 @@
 
 package io.github.jbellis.jvector.vector;
 
+import io.github.jbellis.jvector.finger.FingerMetadata;
+import io.github.jbellis.jvector.graph.NodeSimilarity;
+
 import java.util.List;
 
 final class DefaultVectorUtilSupport implements VectorUtilSupport {
@@ -273,4 +276,9 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     }
     return hd;
   }
+
+    @Override
+    public float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct) {
+        throw new UnsupportedOperationException();
+    }
 }

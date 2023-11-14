@@ -16,6 +16,9 @@
 
 package io.github.jbellis.jvector.vector;
 
+import io.github.jbellis.jvector.finger.FingerMetadata;
+import io.github.jbellis.jvector.graph.NodeSimilarity;
+
 import java.util.List;
 
 final class
@@ -105,5 +108,10 @@ PanamaVectorUtilSupport implements VectorUtilSupport {
     @Override
     public int hammingDistance(long[] v1, long[] v2) {
         return SimdOps.hammingDistance(v1, v2);
+    }
+
+    @Override
+    public float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct) {
+        return SimdOps.fingerDotProduct(metadata, ensf, node2, dotProduct);
     }
 }

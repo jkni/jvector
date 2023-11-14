@@ -99,7 +99,8 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
 
         @Override
         public float similarityTo(int node2) {
-            return (1 + decodedSimilarity(cv.get(node2))) / 2;
+            // NOTE: Cheating, not normalizing similarity to easily use it without cache
+            return decodedSimilarity(cv.get(node2));
         }
 
         @Override

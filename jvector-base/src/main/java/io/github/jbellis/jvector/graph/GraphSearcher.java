@@ -73,14 +73,17 @@ public class GraphSearcher<T> {
      */
     public static <T> SearchResult search(T targetVector, int topK, RandomAccessVectorValues<T> vectors, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction, NodeSimilarity.EstimatedNeighborsScoreFunction estimatedScoreFunction, GraphIndex<T> graph, Bits acceptOrds) {
         var searcher = new GraphSearcher.Builder<>(graph.getView()).withConcurrentUpdates().build();
-        NodeSimilarity.ExactScoreFunction scoreFunction = i -> {
-            switch (vectorEncoding) {
-                case BYTE:
-                    return similarityFunction.compare((byte[]) targetVector, (byte[]) vectors.vectorValue(i));
-                case FLOAT32:
-                    return similarityFunction.compare((float[]) targetVector, (float[]) vectors.vectorValue(i));
-                default:
-                    throw new RuntimeException("Unsupported vector encoding: " + vectorEncoding);
+        NodeSimilarity.ExactScoreFunction scoreFunction = new NodeSimilarity.ExactScoreFunction() {
+            @Override
+            public float similarityTo(int node2) {
+                return similarityFunction.compare((float[]) targetVector, (float[]) vectors.vectorValue(node2));
+            }
+
+            @Override
+            public float cachingSimilarityTo(int node2, Map<Integer, Float> cache) {
+                var similarity = similarityFunction.compare((float[]) targetVector, (float[]) vectors.vectorValue(node2));
+                cache.put(node2, (similarity * 2) - 1);
+                return similarity;
             }
         };
         return searcher.search(scoreFunction, null, estimatedScoreFunction, topK, acceptOrds);
@@ -238,10 +241,12 @@ public class GraphSearcher<T> {
             minAcceptedSimilarity = resultsQueue.topScore();
         }
         var current = 0;
+        float[] friendSimilarities = new float[0];
         while (candidates.size() > 0 && !resultsQueue.incomplete()) {
             current++;
             // get the best candidate (closest or best scoring)
-            if (candidates.topScore() < minAcceptedSimilarity) {
+            var topScore = candidates.topScore();
+            if (topScore < minAcceptedSimilarity) {
                 break;
             }
 
@@ -254,11 +259,10 @@ public class GraphSearcher<T> {
             if (!scoreFunction.isExact()) {
                 vectorsEncountered.put(topCandidateNode, view.getVector(topCandidateNode));
             }
-            /*float[] friendSimilarities = new float[0];*/
             if (estimatedScoreFunction != null && current > exactDepth) {
-                /*friendSimilarities = estimatedScoreFunction.bulkSimilarityTo(topCandidateNode, visited);
-                approximateCalculations += friendSimilarities.length;*/
-                estimatedScoreFunction.swapBaseNode(topCandidateNode);
+                friendSimilarities = estimatedScoreFunction.bulkSimilarityTo(topCandidateNode, topScore, visited);
+                approximateCalculations += friendSimilarities.length;
+                //estimatedScoreFunction.swapBaseNode(topCandidateNode);
 
             }
             var iteration = 0;
@@ -275,18 +279,18 @@ public class GraphSearcher<T> {
                     friendSimilarity = scoreFunction.similarityTo(friendOrd);
                     exactCalculations++;
                 } else if (current <= exactDepth) {
-                    friendSimilarity = scoreFunction.cachingSimilarityTo(friendOrd, dotProductCache);
+                    friendSimilarity = scoreFunction.similarityTo(friendOrd);
                     exactCalculations++;
                 } else {
-                   //friendSimilarity = friendSimilarities[iteration - 1];
-                    friendSimilarity = estimatedScoreFunction.similarityTo(iteration - 1);
+                   friendSimilarity = friendSimilarities[iteration - 1];
+                    //friendSimilarity = estimatedScoreFunction.similarityTo(iteration - 1);
                     approximateCalculations++;
                 }
                 scoreTracker.track(friendSimilarity);
 
                 if (friendSimilarity >= minAcceptedSimilarity) {
                     if (estimatedScoreFunction != null && current > exactDepth) {
-                        friendSimilarity = scoreFunction.cachingSimilarityTo(friendOrd, dotProductCache);
+                        friendSimilarity = scoreFunction.similarityTo(friendOrd);
                         exactCalculations++;
                     }
                     candidates.push(friendOrd, friendSimilarity);
