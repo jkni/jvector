@@ -24,6 +24,7 @@ import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.VectorOperators;
 
+import java.util.Arrays;
 import java.util.List;
 
 final class SimdOps {
@@ -669,7 +670,7 @@ final class SimdOps {
         var tcSquaredNorm = t * cSquaredNorm;
         float qResSquaredNorm = ensf.getQSquaredNorm() - (t * tcSquaredNorm);
         double qResNorm = Math.sqrt(qResSquaredNorm);
-        long[][] sgnDResTBs = metadata.sgnDResTB[node2];
+        long[] sgnDResTBs = metadata.sgnDResTB[node2];
         float[] cTB = metadata.cBasisProjections[node2];
         var sqnqResidualProjection = 0L; // assuming low-rank 64
         var qTB = ensf.getQTB();
@@ -683,23 +684,24 @@ final class SimdOps {
             sqnqResidualProjection = sqnqResidualProjection << FloatVector.SPECIES_PREFERRED.length();
             sqnqResidualProjection |= diff.test(VectorOperators.IS_NEGATIVE).not().toLong();
         }
-        /*var sqnqResidualProjection2 = 0L;
-
-        for (int k = 0; k < 64; k++) {
-            if ( qTB[k] - t * cTB[k] >= 0) {
-                sqnqResidualProjection2 |= 1L << k;
-            }
-        }
-        // print bits of longs
-
-        assert sqnqResidualProjection2 == sqnqResidualProjection : Long.toBinaryString(sqnqResidualProjection2) + " != " + Long.toBinaryString(sqnqResidualProjection);*/
-        var sqnqResidualProjectionArray = new long[1];
-        sqnqResidualProjectionArray[0] = sqnqResidualProjection;
 
         // calculate all the hamming distances between sqnqResidualProjection and sgnDResTBs
         var cosines = new float[sgnDResTBs.length];
-        for (int i = 0; i < sgnDResTBs.length; i++) {
-            cosines[i] = (float) metadata.cachedCosine[VectorUtil.hammingDistance(sqnqResidualProjectionArray, sgnDResTBs[i])];
+        /*for (int i = 0; i < sgnDResTBs.length; i++) {
+            cosines[i] = (float) metadata.cachedCosine[Long.bitCount(sqnqResidualProjection ^ sgnDResTBs[i])];
+        }*/
+
+        // THIS SIMD IMPL is about the same as above in perf
+        var index = 0;
+        for (int i = 0; i < sgnDResTBs.length; i += LongVector.SPECIES_PREFERRED.length()) {
+            var mask = LongVector.SPECIES_PREFERRED.indexInRange(i, sgnDResTBs.length);
+            var sgnqResidualProjection = LongVector.SPECIES_PREFERRED.broadcast(sqnqResidualProjection);
+            var sgnDResTBVector = LongVector.fromArray(LongVector.SPECIES_PREFERRED, sgnDResTBs, i, mask);
+            var temp = sgnDResTBVector.lanewise(VectorOperators.XOR, sgnqResidualProjection, mask).lanewise(VectorOperators.BIT_COUNT, mask).toIntArray();
+            for (int j = 0; j <= mask.lastTrue(); j++) {
+                cosines[j + index] = metadata.cachedCosine[temp[j]];
+            }
+            index = index + temp.length;
         }
 
         float[] result = new float[dProjScalarFactors.length];

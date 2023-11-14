@@ -43,11 +43,11 @@ public class FingerMetadata {
     public final float[][] dProjScalarFactor;
     public final float[][] dResSquared;
     public final float[][] dRes;
-    public final long[][][] sgnDResTB;
+    public final long[][] sgnDResTB;
     public final LshBasis basis;
     public final GraphIndex<float[]> index;
     public final RandomAccessVectorValues<float[]> ravv;
-    public final double[] cachedCosine;
+    public final float[] cachedCosine;
 
     public static FingerMetadata compute(GraphIndex<float[]> index, RandomAccessVectorValues<float[]> ravv, int lowRank) {
         var ravvPool = ravv.isValueShared() ? PoolingSupport.newThreadBased(ravv::copy) : PoolingSupport.newNoPooling(ravv);
@@ -58,7 +58,7 @@ public class FingerMetadata {
         var dProjScalarFactor = new float[size][];
         var dResSquared = new float[size][];
         var dResiduals = new float[size][];
-        var sgnDResTB = new long[size][][];
+        var sgnDResTB = new long[size][];
         var cBasisProjections = new float[size][];
         var basis = LshBasis.computeFromResiduals(ravvCopy, ravvCopy.vectorValue(0).length, lowRank);
         for (int i = 0; i < size; i++) {
@@ -69,7 +69,7 @@ public class FingerMetadata {
             dProjScalarFactor[i] = new float[neighborCount];
             dResSquared[i] = new float[neighborCount];
             dResiduals[i] = new float[neighborCount];
-            sgnDResTB[i] = new long[neighborCount][1];
+            sgnDResTB[i] = new long[neighborCount];
             // for neighbor in neighbors:
 
             for (int n = 0; n < neighborCount; n++) {
@@ -94,7 +94,7 @@ public class FingerMetadata {
                         encoded |= 1L << k;
                     }
                 }
-                sgnDResTB[i][n][0] = encoded;
+                sgnDResTB[i][n] = encoded;
             }
         }
 
@@ -245,7 +245,7 @@ public class FingerMetadata {
     }
 
     private FingerMetadata(float[] cSquaredNorms, float[][] cBasisProjections, float[][] dProjScalarFactor, float[][] dResSquared,
-                           float[][] dRes, long[][][] sgnDResTB, LshBasis basis, GraphIndex<float[]> index, RandomAccessVectorValues<float[]> ravv) {
+                           float[][] dRes, long[][] sgnDResTB, LshBasis basis, GraphIndex<float[]> index, RandomAccessVectorValues<float[]> ravv) {
         this.cSquaredNorms = cSquaredNorms;
         this.cBasisProjections = cBasisProjections;
         this.dProjScalarFactor = dProjScalarFactor;
@@ -255,9 +255,9 @@ public class FingerMetadata {
         this.basis = basis;
         this.index = index;
         this.ravv = ravv.copy();
-        this.cachedCosine = new double[65];
+        this.cachedCosine = new float[65];
         for (int i = 0; i < 65; i++) {
-            cachedCosine[i] = Math.cos(Math.PI * i / 64);
+            cachedCosine[i] = (float) Math.cos(Math.PI * i / 64);
         }
     }
 
@@ -265,7 +265,6 @@ public class FingerMetadata {
         // per query calculations
         var qSquaredNorm = VectorUtil.dotProduct(q, q);
         var qTB = basis.project(q);
-        var sqnqResidualProjectionArray = new long[1];
         switch (similarityFunction) {
             case EUCLIDEAN:
                 // return function that computes similarity to query
@@ -278,8 +277,9 @@ public class FingerMetadata {
                     float[] dResNorms;
                     float qResSquaredNorm;
                     double qResNorm;
-                    long[][] sgnDResTBs;
+                    long[] sgnDResTBs;
                     float[] cTB;
+                    long sqnqResidualProjection;
                     @Override
                     public void swapBaseNode(int node2) {
                         c = ravv.vectorValue(node2);
@@ -297,13 +297,12 @@ public class FingerMetadata {
                         // qres L2 norm squared plus // DONE
                         // dres L2 norm squared minus // DONE
                         // 2qtresdres // DONE
-                        var sqnqResidualProjection = 0L; // assuming low-rank 64
+                        sqnqResidualProjection = 0L; // assuming low-rank 64
                         for (int k = 0; k < 64; k++) {
                             if ( qTB[k] - t * cTB[k] >= 0) {
                                 sqnqResidualProjection |= 1L << k;
                             }
                         }
-                        sqnqResidualProjectionArray[0] = sqnqResidualProjection;
                     }
 
                     @Override
@@ -312,7 +311,7 @@ public class FingerMetadata {
                                 qResSquaredNorm +
                                 dResSquaredComponents[neighborIndex] -
                                 2 * dResNorms[neighborIndex] * qResNorm * // just need to approximate cos(qres, dres)
-                                        cachedCosine[VectorUtil.hammingDistance(sqnqResidualProjectionArray, sgnDResTBs[neighborIndex])]);
+                                        cachedCosine[Long.bitCount(sqnqResidualProjection ^ sgnDResTBs[neighborIndex])]);
                         return 1 / ( 1 + distance);
                     }
 
@@ -335,13 +334,12 @@ public class FingerMetadata {
                         // qres L2 norm squared plus // DONE
                         // dres L2 norm squared minus // DONE
                         // 2qtresdres // DONE
-                        var sqnqResidualProjection = 0L; // assuming low-rank 64
+                        sqnqResidualProjection = 0L; // assuming low-rank 64
                         for (int k = 0; k < 64; k++) {
                             if ( qTB[k] - t * cTB[k] >= 0) {
                                 sqnqResidualProjection |= 1L << k;
                             }
                         }
-                        sqnqResidualProjectionArray[0] = sqnqResidualProjection;
 
                         float[] results = new float[dProjScalarFactors.length];
                         for (int i = 0; i < results.length; i++) {
@@ -349,7 +347,7 @@ public class FingerMetadata {
                                     qResSquaredNorm +
                                     dResSquaredComponents[i] -
                                     2 * dResNorms[i] * qResNorm * // just need to approximate cos(qres, dres)
-                                            cachedCosine[VectorUtil.hammingDistance(sqnqResidualProjectionArray, sgnDResTBs[i])]);
+                                            cachedCosine[Long.bitCount(sqnqResidualProjection ^ sgnDResTBs[i])]);
                             results[i] = 1 / (1 + distance);
                         }
                         return results;
@@ -379,8 +377,9 @@ public class FingerMetadata {
                     float[] dResNorms;
                     float qResSquaredNorm;
                     double qResNorm;
-                    long[][] sgnDResTBs;
+                    long[] sgnDResTBs;
                     float[] cTB;
+                    long sqnqResidualProjection;
                     public final HashMap<Integer, Float> dotProductCache = new HashMap<>();
                     @Override
                     public void swapBaseNode(int node2) {
@@ -393,13 +392,12 @@ public class FingerMetadata {
                         qResNorm = Math.sqrt(qResSquaredNorm);
                         sgnDResTBs = sgnDResTB[node2];
                         cTB = cBasisProjections[node2];
-                        var sqnqResidualProjection = 0L; // assuming low-rank 64
+                        sqnqResidualProjection = 0L; // assuming low-rank 64
                         for (int k = 0; k < 64; k++) {
                             if ( qTB[k] - t * cTB[k] >= 0) {
                                 sqnqResidualProjection |= 1L << k;
                             }
                         }
-                        sqnqResidualProjectionArray[0] = sqnqResidualProjection;
                     }
 
                     @Override
@@ -409,7 +407,7 @@ public class FingerMetadata {
                         var temp2 = t * cSquaredNorm * dProjScalarFactors[neighborIndex];
                         // qrest (dot) dres follows
                         var temp = dResNorms[neighborIndex] * qResNorm * // just need to approximate cos(qres, dres)
-                                cachedCosine[VectorUtil.hammingDistance(sqnqResidualProjectionArray, sgnDResTBs[neighborIndex])];
+                                cachedCosine[Long.bitCount(sqnqResidualProjection ^ sgnDResTBs[neighborIndex])];
                         return (1 + (float) (temp2 + temp))/2;
                     }
 
