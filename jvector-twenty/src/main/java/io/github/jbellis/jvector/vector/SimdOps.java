@@ -662,7 +662,6 @@ final class SimdOps {
     }
 
     public static float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct) {
-        float[] c = metadata.ravv.vectorValue(node2);
         float cSquaredNorm = metadata.cSquaredNorms[node2];
         float t = dotProduct / cSquaredNorm;
         float[] dProjScalarFactors = metadata.dProjScalarFactor[node2];
@@ -691,33 +690,23 @@ final class SimdOps {
         float[] result = new float[dProjScalarFactors.length];
         int vectorizedLength = FloatVector.SPECIES_PREFERRED.loopBound(dProjScalarFactors.length);
 
-        for (int i = 0; i < vectorizedLength; i += FloatVector.SPECIES_PREFERRED.length()) {
-            // broadcast t * cSquaredNorm into an array
-            var tCsqNorm = FloatVector.broadcast(FloatVector.SPECIES_PREFERRED, t * cSquaredNorm);
-            var dProjScalarFactor = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dProjScalarFactors, i);
+        for (int i = 0; i < dProjScalarFactors.length; i += FloatVector.SPECIES_PREFERRED.length()) {
+            var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, dProjScalarFactors.length);
+            var dProjScalarFactor = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dProjScalarFactors, i, mask);
             // multiply tCsqNorm by dProjScalarFactor
-            var tCsqNormTimesDProjScalarFactor = tCsqNorm.mul(dProjScalarFactor);
+            var tCsqNormTimesDProjScalarFactor = dProjScalarFactor.mul(t*cSquaredNorm);
             // broadcast qResNorm
-            var qResNormVector = FloatVector.broadcast(FloatVector.SPECIES_PREFERRED, (float) qResNorm);
             // load dResNorms
-            var dResNormVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dResNorms, i);
+            var dResNormVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dResNorms, i, mask);
             // multiply qResNormVector by dResNormVector
-            var qResNormTimesDResNorm = qResNormVector.mul(dResNormVector);
-            var cosineVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, cosines, i);
+            var qResNormTimesDResNorm = dResNormVector.mul((float)qResNorm);
+            var cosineVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, cosines, i, mask);
             var temp = cosineVector.mul(qResNormTimesDResNorm);
             temp = temp.add(tCsqNormTimesDProjScalarFactor);
             //temp = temp.add(1);
             //temp = temp.div(2);
-            temp.intoArray(result, i);
+            temp.intoArray(result, i, mask);
        }
-
-        // Process the tail
-        for (int i = vectorizedLength; i < result.length; i++) {
-            var temp2 = t * cSquaredNorm * dProjScalarFactors[i];
-            var temp = dResNorms[i] * qResNorm * cosines[i];
-            result[i] = (float) (temp2 + temp);
-            //result[i] = (1 + (float) (temp2 + temp)) / 2;
-        }
         return result;
     }
 }
