@@ -710,15 +710,15 @@ final class SimdOps {
             var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, dProjScalarFactors.length);
             var dProjScalarFactor = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dProjScalarFactors, i, mask);
             // multiply tCsqNorm by dProjScalarFactor
-            var tCsqNormTimesDProjScalarFactor = dProjScalarFactor.mul(tCsqNorm);
+            var tCsqNormTimesDProjScalarFactor = dProjScalarFactor.mul(tCsqNorm, mask);
             // broadcast qResNorm
             // load dResNorms
             var dResNormVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dResNorms, i, mask);
             // multiply qResNormVector by dResNormVector
-            var qResNormTimesDResNorm = dResNormVector.mul(qResNormVector);
+            var qResNormTimesDResNorm = dResNormVector.mul(qResNormVector, mask);
             var cosineVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, cosines, i, mask);
-            var temp = cosineVector.fma(qResNormTimesDResNorm, tCsqNormTimesDProjScalarFactor);
-            //temp = temp.add(tCsqNormTimesDProjScalarFactor);
+            var temp = cosineVector.mul(qResNormTimesDResNorm, mask);
+            temp = temp.add(tCsqNormTimesDProjScalarFactor, mask);
             //temp = temp.add(1);
             //temp = temp.div(2);
             temp.intoArray(result, i, mask);
