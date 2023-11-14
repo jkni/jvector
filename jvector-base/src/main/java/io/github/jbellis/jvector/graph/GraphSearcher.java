@@ -201,7 +201,7 @@ public class GraphSearcher<T> {
                                 int ep,
                                 Bits acceptOrds)
     {
-        var exactDepth = 2;
+        var exactDepth = 5;
         var dotProductCache = estimatedScoreFunction == null ? null : estimatedScoreFunction.getDotProductCache();
         if (!scoreFunction.isExact() && reRanker == null) {
             throw new IllegalArgumentException("Either scoreFunction must be exact, or reRanker must not be null");

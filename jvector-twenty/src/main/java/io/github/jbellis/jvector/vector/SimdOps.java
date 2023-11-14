@@ -666,17 +666,33 @@ final class SimdOps {
         float t = dotProduct / cSquaredNorm;
         float[] dProjScalarFactors = metadata.dProjScalarFactor[node2];
         float[] dResNorms = metadata.dRes[node2];
-        float qResSquaredNorm = ensf.getQSquaredNorm() - (t * t * cSquaredNorm);
+        var tcSquaredNorm = t * cSquaredNorm;
+        float qResSquaredNorm = ensf.getQSquaredNorm() - (t * tcSquaredNorm);
         double qResNorm = Math.sqrt(qResSquaredNorm);
         long[][] sgnDResTBs = metadata.sgnDResTB[node2];
         float[] cTB = metadata.cBasisProjections[node2];
         var sqnqResidualProjection = 0L; // assuming low-rank 64
         var qTB = ensf.getQTB();
+        // get the sign of the difference between qTB and cTB at each entry using SIMD
+        for (int i = 48; i >= 0; i -= FloatVector.SPECIES_PREFERRED.length()) {
+            var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, 64);
+            var qTBVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, qTB, i, mask);
+            var cTBVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, cTB, i, mask);
+            var diff = qTBVector.sub(cTBVector.mul(t));
+            // reduce diff vector into a long by setting a bit if the lane is >= 0
+            sqnqResidualProjection = sqnqResidualProjection << FloatVector.SPECIES_PREFERRED.length();
+            sqnqResidualProjection |= diff.test(VectorOperators.IS_NEGATIVE).not().toLong();
+        }
+        /*var sqnqResidualProjection2 = 0L;
+
         for (int k = 0; k < 64; k++) {
             if ( qTB[k] - t * cTB[k] >= 0) {
-                sqnqResidualProjection |= 1L << k;
+                sqnqResidualProjection2 |= 1L << k;
             }
         }
+        // print bits of longs
+
+        assert sqnqResidualProjection2 == sqnqResidualProjection : Long.toBinaryString(sqnqResidualProjection2) + " != " + Long.toBinaryString(sqnqResidualProjection);*/
         var sqnqResidualProjectionArray = new long[1];
         sqnqResidualProjectionArray[0] = sqnqResidualProjection;
 
@@ -686,27 +702,26 @@ final class SimdOps {
             cosines[i] = (float) metadata.cachedCosine[VectorUtil.hammingDistance(sqnqResidualProjectionArray, sgnDResTBs[i])];
         }
 
-
         float[] result = new float[dProjScalarFactors.length];
-        int vectorizedLength = FloatVector.SPECIES_PREFERRED.loopBound(dProjScalarFactors.length);
-
+        var tCsqNorm = FloatVector.broadcast(FloatVector.SPECIES_PREFERRED, tcSquaredNorm);
+        var qResNormVector = FloatVector.broadcast(FloatVector.SPECIES_PREFERRED, (float)qResNorm);
         for (int i = 0; i < dProjScalarFactors.length; i += FloatVector.SPECIES_PREFERRED.length()) {
             var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, dProjScalarFactors.length);
             var dProjScalarFactor = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dProjScalarFactors, i, mask);
             // multiply tCsqNorm by dProjScalarFactor
-            var tCsqNormTimesDProjScalarFactor = dProjScalarFactor.mul(t*cSquaredNorm);
+            var tCsqNormTimesDProjScalarFactor = dProjScalarFactor.mul(tCsqNorm);
             // broadcast qResNorm
             // load dResNorms
             var dResNormVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dResNorms, i, mask);
             // multiply qResNormVector by dResNormVector
-            var qResNormTimesDResNorm = dResNormVector.mul((float)qResNorm);
+            var qResNormTimesDResNorm = dResNormVector.mul(qResNormVector);
             var cosineVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, cosines, i, mask);
-            var temp = cosineVector.mul(qResNormTimesDResNorm);
-            temp = temp.add(tCsqNormTimesDProjScalarFactor);
+            var temp = cosineVector.fma(qResNormTimesDResNorm, tCsqNormTimesDProjScalarFactor);
+            //temp = temp.add(tCsqNormTimesDProjScalarFactor);
             //temp = temp.add(1);
             //temp = temp.div(2);
             temp.intoArray(result, i, mask);
-       }
+        }
         return result;
     }
 }

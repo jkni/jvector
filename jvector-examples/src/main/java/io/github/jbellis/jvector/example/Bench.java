@@ -67,7 +67,7 @@ public class Bench {
                                    Path testDirectory) throws IOException
     {
         var floatVectors = new ListRandomAccessVectorValues(ds.baseVectors, ds.baseVectors.get(0).length);
-        var topK = ds.groundTruth.get(0).size();
+        var topK = 10;
 
         var start = System.nanoTime();
         var builder = new GraphIndexBuilder<>(floatVectors, VectorEncoding.FLOAT32, ds.similarityFunction, M, efConstruction, 1.2f, 1.2f);
