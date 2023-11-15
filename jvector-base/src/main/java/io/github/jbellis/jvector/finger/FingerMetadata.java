@@ -49,6 +49,7 @@ public class FingerMetadata {
     public final RandomAccessVectorValues<float[]> ravv;
     public final float[] cachedCosine;
 
+    // low-rank param is fake, always 64
     public static FingerMetadata compute(GraphIndex<float[]> index, RandomAccessVectorValues<float[]> ravv, int lowRank) {
         var ravvPool = ravv.isValueShared() ? PoolingSupport.newThreadBased(ravv::copy) : PoolingSupport.newNoPooling(ravv);
         var ravvCopy = ravvPool.get().get();
