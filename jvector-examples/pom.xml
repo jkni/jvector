@@ -145,6 +145,9 @@
                                     <arguments>
                                         <argument>-classpath</argument>
                                         <classpath/>
+<!--
+                                        <argument>-XX:UseAVX=2</argument>
+-->
                                         <argument>--add-modules=jdk.incubator.vector</argument>
                                         <argument>-Xmx12G</argument>
                                         <argument>-ea</argument>

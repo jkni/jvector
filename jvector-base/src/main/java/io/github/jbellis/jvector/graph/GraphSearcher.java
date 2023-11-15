@@ -278,10 +278,10 @@ public class GraphSearcher<T> {
             float friendSimilarity;
             for (var it = view.getNeighborsIterator(topCandidateNode); it.hasNext(); ) {
                 int friendOrd = it.nextInt();
-                iteration++;
                 if (visited.getAndSet(friendOrd)) {
                     continue;
                 }
+                iteration++;
                 numVisited++;
 
                 if (estimatedScoreFunction == null) {
