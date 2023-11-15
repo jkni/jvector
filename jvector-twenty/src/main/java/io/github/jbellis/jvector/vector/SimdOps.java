@@ -22,10 +22,13 @@ import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
+import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 
 import java.util.Arrays;
 import java.util.List;
+
+import static jdk.incubator.vector.VectorMask.fromLong;
 
 final class SimdOps {
 
@@ -662,7 +665,22 @@ final class SimdOps {
         return res;
     }
 
-    public static float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct) {
+    public static long matrixDifferenceSigns(float[] qTB, float[] cTB, float t) {
+        long signDifferences = 0;
+        for (int i = 48; i >= 0; i -= FloatVector.SPECIES_PREFERRED.length()) {
+            var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, 64);
+            var qTBVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, qTB, i, mask);
+            var cTBVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, cTB, i, mask);
+            var diff = qTBVector.sub(cTBVector.mul(t));
+            // reduce diff vector into a long by setting a bit if the lane is >= 0
+            signDifferences = signDifferences << FloatVector.SPECIES_PREFERRED.length();
+            signDifferences |= diff.test(VectorOperators.IS_NEGATIVE).not().toLong();
+        }
+        return signDifferences;
+    }
+
+    public static float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf,
+                                           int node2, float dotProduct, long neighborsToInclude) {
         float cSquaredNorm = metadata.cSquaredNorms[node2];
         float t = dotProduct / cSquaredNorm;
         float[] dProjScalarFactors = metadata.dProjScalarFactor[node2];
@@ -672,18 +690,9 @@ final class SimdOps {
         double qResNorm = Math.sqrt(qResSquaredNorm);
         long[] sgnDResTBs = metadata.sgnDResTB[node2];
         float[] cTB = metadata.cBasisProjections[node2];
-        var sqnqResidualProjection = 0L; // assuming low-rank 64
         var qTB = ensf.getQTB();
         // get the sign of the difference between qTB and cTB at each entry using SIMD
-        for (int i = 48; i >= 0; i -= FloatVector.SPECIES_PREFERRED.length()) {
-            var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, 64);
-            var qTBVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, qTB, i, mask);
-            var cTBVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, cTB, i, mask);
-            var diff = qTBVector.sub(cTBVector.mul(t));
-            // reduce diff vector into a long by setting a bit if the lane is >= 0
-            sqnqResidualProjection = sqnqResidualProjection << FloatVector.SPECIES_PREFERRED.length();
-            sqnqResidualProjection |= diff.test(VectorOperators.IS_NEGATIVE).not().toLong();
-        }
+        var sgnqResidualProjection = matrixDifferenceSigns(qTB, cTB, t);
 
         // calculate all the hamming distances between sqnqResidualProjection and sgnDResTBs
         var cosines = new float[sgnDResTBs.length];
@@ -693,15 +702,19 @@ final class SimdOps {
 
         // THIS SIMD IMPL is about the same as above in perf
         var index = 0;
+        var cosineNeighborsToInclude = neighborsToInclude;
         for (int i = 0; i < sgnDResTBs.length; i += LongVector.SPECIES_PREFERRED.length()) {
             var mask = LongVector.SPECIES_PREFERRED.indexInRange(i, sgnDResTBs.length);
-            var sgnqResidualProjection = LongVector.SPECIES_PREFERRED.broadcast(sqnqResidualProjection);
+            var includedNeighborsMask = VectorMask.fromLong(LongVector.SPECIES_PREFERRED, cosineNeighborsToInclude);
+            mask = mask.and(includedNeighborsMask);
+            var sgnqResidualProjectionVector = LongVector.SPECIES_PREFERRED.broadcast(sgnqResidualProjection);
             var sgnDResTBVector = LongVector.fromArray(LongVector.SPECIES_PREFERRED, sgnDResTBs, i, mask);
-            var temp = sgnDResTBVector.lanewise(VectorOperators.XOR, sgnqResidualProjection, mask).lanewise(VectorOperators.BIT_COUNT, mask).toIntArray();
+            var temp = sgnDResTBVector.lanewise(VectorOperators.XOR, sgnqResidualProjectionVector, mask).lanewise(VectorOperators.BIT_COUNT, mask).toIntArray();
             for (int j = 0; j <= mask.lastTrue(); j++) {
                 cosines[j + index] = metadata.cachedCosine[temp[j]];
             }
             index = index + temp.length;
+            cosineNeighborsToInclude = cosineNeighborsToInclude >> LongVector.SPECIES_PREFERRED.length();
         }
 
         float[] result = new float[dProjScalarFactors.length];
@@ -710,6 +723,7 @@ final class SimdOps {
 
         for (int i = 0; i < dProjScalarFactors.length; i += FloatVector.SPECIES_PREFERRED.length()) {
             var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, dProjScalarFactors.length);
+            mask = mask.and(VectorMask.fromLong(FloatVector.SPECIES_PREFERRED, neighborsToInclude));
             var dProjScalarFactor = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, dProjScalarFactors, i, mask);
             // multiply tCsqNorm by dProjScalarFactor
             var tCsqNormTimesDProjScalarFactor = dProjScalarFactor.mul(tCsqNorm, mask);
@@ -724,6 +738,7 @@ final class SimdOps {
             //temp = temp.add(1);
             //temp = temp.div(2);
             temp.intoArray(result, i, mask);
+            neighborsToInclude = neighborsToInclude >> FloatVector.SPECIES_PREFERRED.length();
         }
         return result;
     }

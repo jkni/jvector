@@ -246,7 +246,11 @@ public final class VectorUtil {
     return impl.hammingDistance(v1, v2);
   }
 
-  public static float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct) {
-    return impl.fingerDotProduct(metadata, ensf, node2, dotProduct);
+  public static long matrixDifferenceSigns(float[] qTB, float[] cTB, float t) {
+    return impl.matrixDifferenceSigns(qTB, cTB, t);
+  }
+
+  public static float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct, long neighborsToInclude) {
+    return impl.fingerDotProduct(metadata, ensf, node2, dotProduct, neighborsToInclude);
   }
 }

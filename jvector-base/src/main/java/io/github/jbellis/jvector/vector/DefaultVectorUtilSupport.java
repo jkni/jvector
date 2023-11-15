@@ -277,8 +277,19 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     return hd;
   }
 
+  @Override
+  public long matrixDifferenceSigns(float[] qTB, float[] cTB, float t) {
+    long differenceSigns = 0L;
+    for (int k = 0; k < 64; k++) {
+      if ( qTB[k] - t * cTB[k] >= 0) {
+        differenceSigns |= 1L << k;
+      }
+    }
+    return differenceSigns;
+  }
+
     @Override
-    public float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct) {
+    public float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct, long neighborsToInclude) {
         throw new UnsupportedOperationException();
     }
 }

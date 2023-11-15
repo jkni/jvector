@@ -73,9 +73,9 @@ public interface NodeSimilarity {
     }
 
     interface EstimatedNeighborsScoreFunction {
-        void swapBaseNode(int node2);
+        void swapBaseNode(int node2, float dotProduct);
         float similarityTo(int neighborIndex);
-        float[] bulkSimilarityTo(int node2, float dotProduct, BitSet visited);
+        float[] bulkSimilarityTo(int node2, float dotProduct, long nodesToInclude);
         Map<Integer, Float> getDotProductCache();
         float getQSquaredNorm();
         float[] getQTB();

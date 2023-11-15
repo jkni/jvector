@@ -259,10 +259,19 @@ public class GraphSearcher<T> {
             if (!scoreFunction.isExact()) {
                 vectorsEncountered.put(topCandidateNode, view.getVector(topCandidateNode));
             }
+            long nodesToInclude = 0L;
+            var index = 0;
+            for (var it = view.getNeighborsIterator(topCandidateNode); it.hasNext(); index++) {
+                int friendOrd = it.nextInt();
+                if (!visited.get(friendOrd)) {
+                    nodesToInclude |= 1L << index;
+                }
+            }
+
             if (estimatedScoreFunction != null && current > exactDepth) {
-                friendSimilarities = estimatedScoreFunction.bulkSimilarityTo(topCandidateNode, topScore, visited);
+                friendSimilarities = estimatedScoreFunction.bulkSimilarityTo(topCandidateNode, topScore, nodesToInclude);
                 approximateCalculations += friendSimilarities.length;
-                //estimatedScoreFunction.swapBaseNode(topCandidateNode);
+                //estimatedScoreFunction.swapBaseNode(topCandidateNode, topScore);
 
             }
             var iteration = 0;
@@ -282,9 +291,9 @@ public class GraphSearcher<T> {
                     friendSimilarity = scoreFunction.similarityTo(friendOrd);
                     exactCalculations++;
                 } else {
-                   friendSimilarity = friendSimilarities[iteration - 1];
-                    //friendSimilarity = estimatedScoreFunction.similarityTo(iteration - 1);
-                    approximateCalculations++;
+                    friendSimilarity = friendSimilarities[iteration - 1];
+                    /*friendSimilarity = estimatedScoreFunction.similarityTo(iteration - 1);
+                    approximateCalculations++;*/
                 }
                 scoreTracker.track(friendSimilarity);
 

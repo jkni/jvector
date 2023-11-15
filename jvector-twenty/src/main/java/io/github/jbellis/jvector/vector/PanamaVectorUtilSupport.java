@@ -111,7 +111,12 @@ PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     @Override
-    public float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct) {
-        return SimdOps.fingerDotProduct(metadata, ensf, node2, dotProduct);
+    public long matrixDifferenceSigns(float[] qTB, float[] cTB, float t) {
+        return SimdOps.matrixDifferenceSigns(qTB, cTB, t);
+    }
+
+    @Override
+    public float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct, long neighborsToInclude) {
+        return SimdOps.fingerDotProduct(metadata, ensf, node2, dotProduct, neighborsToInclude);
     }
 }

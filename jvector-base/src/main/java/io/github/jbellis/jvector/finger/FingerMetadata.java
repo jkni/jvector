@@ -282,10 +282,10 @@ public class FingerMetadata {
                     float[] cTB;
                     long sqnqResidualProjection;
                     @Override
-                    public void swapBaseNode(int node2) {
+                    public void swapBaseNode(int node2, float dotProduct) {
                         c = ravv.vectorValue(node2);
                         cSquaredNorm = cSquaredNorms[node2];
-                        t = VectorUtil.dotProduct(q,c) / cSquaredNorm; // UPDATE TO USE CACHED PREVIOUS DISTANCE
+                        t = dotProduct / cSquaredNorm;
                         dProjScalarFactors = dProjScalarFactor[node2];
                         dResSquaredComponents = dResSquared[node2];
                         dResNorms = dRes[node2];
@@ -317,7 +317,7 @@ public class FingerMetadata {
                     }
 
                     @Override
-                    public float[] bulkSimilarityTo(int node2, float topScore, BitSet visited) {
+                    public float[] bulkSimilarityTo(int node2, float topScore, long nodesToInclude) {
                         //node2 is our c index
                         var c = ravv.vectorValue(node2);
                         var cSquaredNorm = cSquaredNorms[node2];
@@ -381,24 +381,21 @@ public class FingerMetadata {
                     long[] sgnDResTBs;
                     float[] cTB;
                     long sqnqResidualProjection;
+                    float tcSquaredNorm;
                     public final HashMap<Integer, Float> dotProductCache = new HashMap<>();
                     @Override
-                    public void swapBaseNode(int node2) {
+                    public void swapBaseNode(int node2, float dotProduct) {
                         c = ravv.vectorValue(node2);
                         cSquaredNorm = cSquaredNorms[node2];
-                        t = dotProductCache.computeIfAbsent(node2, dummy -> VectorUtil.dotProduct(q,c)) / cSquaredNorm; // UPDATE TO USE CACHED PREVIOUS DISTANCE
+                        t = dotProduct / cSquaredNorm;
                         dProjScalarFactors = dProjScalarFactor[node2];
                         dResNorms = dRes[node2];
-                        qResSquaredNorm = qSquaredNorm - (t * t * cSquaredNorm);
+                        tcSquaredNorm = t * cSquaredNorm;
+                        qResSquaredNorm = qSquaredNorm - (t * tcSquaredNorm);
                         qResNorm = Math.sqrt(qResSquaredNorm);
                         sgnDResTBs = sgnDResTB[node2];
                         cTB = cBasisProjections[node2];
-                        sqnqResidualProjection = 0L; // assuming low-rank 64
-                        for (int k = 0; k < 64; k++) {
-                            if ( qTB[k] - t * cTB[k] >= 0) {
-                                sqnqResidualProjection |= 1L << k;
-                            }
-                        }
+                        sqnqResidualProjection = VectorUtil.matrixDifferenceSigns(qTB, cTB, t);
                     }
 
                     @Override
@@ -409,12 +406,13 @@ public class FingerMetadata {
                         // qrest (dot) dres follows
                         var temp = dResNorms[neighborIndex] * qResNorm * // just need to approximate cos(qres, dres)
                                 cachedCosine[Long.bitCount(sqnqResidualProjection ^ sgnDResTBs[neighborIndex])];
-                        return (1 + (float) (temp2 + temp))/2;
+                        return (float) (temp2 + temp);
                     }
 
                     @Override
-                    public float[] bulkSimilarityTo(int node2, float dotProduct, BitSet visited) {
-                        return VectorUtil.fingerDotProduct(FingerMetadata.this, this, node2, dotProduct);
+                    public float[] bulkSimilarityTo(int node2, float dotProduct, long nodesToInclude) {
+                        return VectorUtil.fingerDotProduct(FingerMetadata.this, this, node2, dotProduct,
+                                nodesToInclude);
                     }
 
                     @Override

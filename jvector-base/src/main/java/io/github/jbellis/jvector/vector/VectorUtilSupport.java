@@ -93,5 +93,7 @@ public interface VectorUtilSupport {
 
   public int hammingDistance(long[] v1, long[] v2);
 
-  float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct);
+  public long matrixDifferenceSigns(float[] qTB, float[] cTB, float t);
+
+  public float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf, int node2, float dotProduct, long neighborsToInclude);
 }
