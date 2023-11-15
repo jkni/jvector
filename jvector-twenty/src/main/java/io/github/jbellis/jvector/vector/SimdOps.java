@@ -701,20 +701,28 @@ final class SimdOps {
         }*/
 
         // THIS SIMD IMPL is about the same as above in perf
-        var index = 0;
         var cosineNeighborsToInclude = neighborsToInclude;
+        var cosineIndexes = new int[32]; // TODO: hardcoded to max length
         for (int i = 0; i < sgnDResTBs.length; i += LongVector.SPECIES_PREFERRED.length()) {
             var mask = LongVector.SPECIES_PREFERRED.indexInRange(i, sgnDResTBs.length);
             var includedNeighborsMask = VectorMask.fromLong(LongVector.SPECIES_PREFERRED, cosineNeighborsToInclude);
             mask = mask.and(includedNeighborsMask);
             var sgnqResidualProjectionVector = LongVector.SPECIES_PREFERRED.broadcast(sgnqResidualProjection);
             var sgnDResTBVector = LongVector.fromArray(LongVector.SPECIES_PREFERRED, sgnDResTBs, i, mask);
-            var temp = sgnDResTBVector.lanewise(VectorOperators.XOR, sgnqResidualProjectionVector, mask).lanewise(VectorOperators.BIT_COUNT, mask).toIntArray();
-            for (int j = 0; j <= mask.lastTrue(); j++) {
-                cosines[j + index] = metadata.cachedCosine[temp[j]];
-            }
-            index = index + temp.length;
+            var tmp = sgnDResTBVector.lanewise(VectorOperators.XOR, sgnqResidualProjectionVector, mask)
+                    .lanewise(VectorOperators.BIT_COUNT, mask).toIntArray();
+            //copy tmp into cosineIndexes
+            System.arraycopy(tmp, 0, cosineIndexes, i, LongVector.SPECIES_PREFERRED.length());
             cosineNeighborsToInclude = cosineNeighborsToInclude >> LongVector.SPECIES_PREFERRED.length();
+        }
+        cosineNeighborsToInclude = neighborsToInclude;
+        for (int i = 0; i < dProjScalarFactors.length; i += FloatVector.SPECIES_PREFERRED.length()) {
+            var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, dProjScalarFactors.length);
+            var includedNeighborsMask = VectorMask.fromLong(FloatVector.SPECIES_PREFERRED, cosineNeighborsToInclude);
+            mask = mask.and(includedNeighborsMask);
+            var cosineVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, metadata.cachedCosine, 0, cosineIndexes, i, mask);
+            cosineVector.intoArray(cosines, i, mask);
+            cosineNeighborsToInclude = cosineNeighborsToInclude >> FloatVector.SPECIES_PREFERRED.length();
         }
 
         float[] result = new float[dProjScalarFactors.length];
