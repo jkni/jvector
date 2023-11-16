@@ -665,10 +665,10 @@ final class SimdOps {
         return res;
     }
 
-    public static long matrixDifferenceSigns(float[] qTB, float[] cTB, float t) {
+    public static long matrixDifferenceSigns(float[] qTB, float[] cTB, float t, int offset) {
         long signDifferences = 0;
-        for (int i = 48; i >= 0; i -= FloatVector.SPECIES_PREFERRED.length()) {
-            var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, 64);
+        for (int i = 48 + offset; i >= offset; i -= FloatVector.SPECIES_PREFERRED.length()) {
+            var mask = FloatVector.SPECIES_PREFERRED.indexInRange(i, 64 + offset);
             var qTBVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, qTB, i, mask);
             var cTBVector = FloatVector.fromArray(FloatVector.SPECIES_PREFERRED, cTB, i, mask);
             var diff = qTBVector.sub(cTBVector.mul(t));
@@ -677,6 +677,10 @@ final class SimdOps {
             signDifferences |= diff.test(VectorOperators.IS_NEGATIVE).not().toLong();
         }
         return signDifferences;
+    }
+
+    public static long matrixDifferenceSigns(float[] qTB, float[] cTB, float t) {
+        return matrixDifferenceSigns(qTB, cTB, t, 0);
     }
 
     public static float[] fingerDotProduct(FingerMetadata metadata, NodeSimilarity.EstimatedNeighborsScoreFunction ensf,
@@ -692,16 +696,17 @@ final class SimdOps {
         float[] cTB = metadata.cBasisProjections[node2];
         var qTB = ensf.getQTB();
         // get the sign of the difference between qTB and cTB at each entry using SIMD
-        var sgnqResidualProjection = matrixDifferenceSigns(qTB, cTB, t);
+        var sgnqResidualProjectionTop = matrixDifferenceSigns(qTB, cTB, t, 64);
+        var sgnqResidualProjectionBottom = matrixDifferenceSigns(qTB, cTB, t, 0);
 
         // calculate all the hamming distances between sqnqResidualProjection and sgnDResTBs
-        var cosines = new float[sgnDResTBs.length];
-        /*for (int i = 0; i < sgnDResTBs.length; i++) {
-            cosines[i] = (float) metadata.cachedCosine[Long.bitCount(sqnqResidualProjection ^ sgnDResTBs[i])];
-        }*/
+        var cosines = new float[dProjScalarFactors.length];
+        for (int i = 0; i < dProjScalarFactors.length; i++) {
+            cosines[i] = metadata.cachedCosine[Long.bitCount(sgnqResidualProjectionBottom ^ sgnDResTBs[i*2])
+                    + Long.bitCount(sgnqResidualProjectionTop ^ sgnDResTBs[i*2 + 1])];
+        }
 
-        // THIS SIMD IMPL is about the same as above in perf
-        var index = 0;
+        /*var index = 0;
         var cosineNeighborsToInclude = neighborsToInclude;
         for (int i = 0; i < sgnDResTBs.length; i += LongVector.SPECIES_PREFERRED.length()) {
             var mask = LongVector.SPECIES_PREFERRED.indexInRange(i, sgnDResTBs.length);
@@ -715,7 +720,7 @@ final class SimdOps {
             }
             index = index + temp.length;
             cosineNeighborsToInclude = cosineNeighborsToInclude >> LongVector.SPECIES_PREFERRED.length();
-        }
+        }*/
 
         float[] result = new float[dProjScalarFactors.length];
         var tCsqNorm = FloatVector.broadcast(FloatVector.SPECIES_PREFERRED, tcSquaredNorm);

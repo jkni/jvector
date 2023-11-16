@@ -70,7 +70,7 @@ public class FingerMetadata {
             dProjScalarFactor[i] = new float[neighborCount];
             dResSquared[i] = new float[neighborCount];
             dResiduals[i] = new float[neighborCount];
-            sgnDResTB[i] = new long[neighborCount];
+            sgnDResTB[i] = new long[neighborCount * 2];
             // for neighbor in neighbors:
 
             for (int n = 0; n < neighborCount; n++) {
@@ -95,7 +95,14 @@ public class FingerMetadata {
                         encoded |= 1L << k;
                     }
                 }
-                sgnDResTB[i][n] = encoded;
+                sgnDResTB[i][n * 2] = encoded;
+                encoded = 0;
+                for (int k = 64; k < 128; k++) {
+                    if (dResB[k] >= 0) {
+                        encoded |= 1L << k - 64;
+                    }
+                }
+                sgnDResTB[i][n * 2 + 1] = encoded;
             }
         }
 
@@ -256,9 +263,9 @@ public class FingerMetadata {
         this.basis = basis;
         this.index = index;
         this.ravv = ravv.copy();
-        this.cachedCosine = new float[65];
-        for (int i = 0; i < 65; i++) {
-            cachedCosine[i] = (float) Math.cos(Math.PI * i / 64);
+        this.cachedCosine = new float[129];
+        for (int i = 0; i < 129; i++) {
+            cachedCosine[i] = (float) Math.cos(Math.PI * i / 129);
         }
     }
 
