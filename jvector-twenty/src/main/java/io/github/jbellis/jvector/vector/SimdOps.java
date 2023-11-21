@@ -669,11 +669,6 @@ final class SimdOps {
         // 16 is from CLUSTERS
         var tmpLeft = FloatVector.zero(FloatVector.SPECIES_512);
         var tmpRight = FloatVector.zero(FloatVector.SPECIES_512);
-        var rightMask = neighborMask >>> 16;
-        VectorMask<Float> tmpLeftMask = VectorMask.fromLong(FloatVector.SPECIES_512, neighborMask);
-        VectorMask<Float> tmpRightMask = VectorMask.fromLong(FloatVector.SPECIES_512, rightMask);
-        VectorMask<Byte> partialsLeftMask = VectorMask.fromLong(ByteVector.SPECIES_128, neighborMask);
-        VectorMask<Byte> partialsRightMask = VectorMask.fromLong(ByteVector.SPECIES_128, rightMask);
         for (int i = 0; i < codebookCount; i++) {
             var shuffleLeft = VectorShuffle.fromArray(ByteVector.SPECIES_128, shuffles, i * 32);
             var shuffleRight = VectorShuffle.fromArray(ByteVector.SPECIES_128, shuffles, i * 32 + 16);
