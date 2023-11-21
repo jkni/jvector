@@ -43,6 +43,14 @@ public interface NodeSimilarity {
         boolean isExact();
 
         float similarityTo(int node2);
+
+        default float[] bulkSimilarityTo(int[] nodes) {
+            var scores = new float[nodes.length];
+            for (var i = 0; i < nodes.length; i++) {
+                scores[i] = similarityTo(nodes[i]);
+            }
+            return scores;
+        }
     }
 
     interface ExactScoreFunction extends ScoreFunction {

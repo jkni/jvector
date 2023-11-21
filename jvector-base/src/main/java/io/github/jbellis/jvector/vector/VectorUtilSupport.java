@@ -89,4 +89,8 @@ public interface VectorUtilSupport {
   public float assembleAndSum(float[] data, int baseIndex, byte[] baseOffsets);
 
   public int hammingDistance(long[] v1, long[] v2);
+
+  float shuffleAndSum(byte[] data, int dataBase, byte[] dataOffsets);
+
+  float[] bulkShuffleSimilarity(byte[] data, int dataBase, byte[] dataOffsets);
 }

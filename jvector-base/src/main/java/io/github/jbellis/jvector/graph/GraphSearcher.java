@@ -220,19 +220,28 @@ public class GraphSearcher<T> {
                 }
             }
 
-            // add its neighbors to the candidates queue
-            for (var it = view.getNeighborsIterator(topCandidateNode); it.hasNext(); ) {
-                int friendOrd = it.nextInt();
+            var it = view.getNeighborsIterator(topCandidateNode);
+            var neighborOrdinals = new int[it.size];
+            for (int i = 0; i < neighborOrdinals.length; i++) {
+                neighborOrdinals[i] = it.nextInt();
+            }
+
+            var similarities = scoreFunction.bulkSimilarityTo(neighborOrdinals);
+
+            var index = 0;
+            for (int friendOrd : neighborOrdinals) {
                 if (visited.getAndSet(friendOrd)) {
+                    index++;
                     continue;
                 }
                 numVisited++;
 
-                float friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                float friendSimilarity = similarities[index];
                 scoreTracker.track(friendSimilarity);
                 if (friendSimilarity >= minAcceptedSimilarity) {
                     candidates.push(friendOrd, friendSimilarity);
                 }
+                index++;
             }
         }
 

@@ -103,6 +103,23 @@ PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     @Override
+    public float shuffleAndSum(byte[] data, int baseIndex, byte[] baseOffsets) {
+        //TODO: Re-enable once Jdk bug is fixed
+        //return SimdOps.assembleAndSum(data, baseIndex, baseOffsets);
+
+        float sum = 0f;
+        for (int i = 0; i < baseOffsets.length; i++) {
+            sum += -1/baseIndex + (2f / (127 * baseIndex) * data[baseIndex * i + Byte.toUnsignedInt(baseOffsets[i])]);
+        }
+        return sum;
+    }
+
+    @Override
+    public float[] bulkShuffleSimilarity(byte[] data, int dataBase, byte[] dataOffsets) {
+        return SimdOps.bulkShuffleSimilarity(data, dataBase, dataOffsets);
+    }
+
+    @Override
     public int hammingDistance(long[] v1, long[] v2) {
         return SimdOps.hammingDistance(v1, v2);
     }

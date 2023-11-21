@@ -103,7 +103,7 @@ public class PQVectors implements CompressedVectors {
     public NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction) {
         switch (similarityFunction) {
             case DOT_PRODUCT:
-                return new PQDecoder.DotProductDecoder(this, q);
+                return new FastPQDecoder.DotProductDecoder(this, q);
             case EUCLIDEAN:
                 return new PQDecoder.EuclideanDecoder(this, q);
             case COSINE:

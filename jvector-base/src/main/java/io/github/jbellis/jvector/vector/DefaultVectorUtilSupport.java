@@ -273,4 +273,14 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     }
     return hd;
   }
+
+  @Override
+  public float shuffleAndSum(byte[] data, int dataBase, byte[] dataOffsets) {
+    throw new UnsupportedOperationException("Not implemented");
+  }
+
+  @Override
+  public float[] bulkShuffleSimilarity(byte[] data, int dataBase, byte[] dataOffsets) {
+    throw new UnsupportedOperationException("Not implemented");
+  }
 }
