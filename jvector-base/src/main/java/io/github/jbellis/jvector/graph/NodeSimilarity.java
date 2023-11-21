@@ -44,9 +44,9 @@ public interface NodeSimilarity {
 
         float similarityTo(int node2);
 
-        default float[] bulkSimilarityTo(int[] nodes) {
-            var scores = new float[nodes.length];
-            for (var i = 0; i < nodes.length; i++) {
+        default float[] bulkSimilarityTo(int[] nodes, int size, long neighborMask) {
+            var scores = new float[size];
+            for (var i = 0; i < size; i++) {
                 scores[i] = similarityTo(nodes[i]);
             }
             return scores;

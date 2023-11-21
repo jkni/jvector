@@ -43,7 +43,7 @@ import static java.lang.Math.min;
  * Codebook cluster count is fixed at 256.
  */
 public class ProductQuantization implements VectorCompressor<byte[]> {
-    static final int CLUSTERS = 256; // number of clusters per subspace = one byte's worth
+    static final int CLUSTERS = 16; // number of clusters per subspace = one byte's worth
     static final int K_MEANS_ITERATIONS = 6;
     static final int MAX_PQ_TRAINING_SET_SIZE = 128000;
 

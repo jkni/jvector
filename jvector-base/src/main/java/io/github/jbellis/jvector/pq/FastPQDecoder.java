@@ -19,8 +19,6 @@ import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorUtil;
 
-import java.util.Arrays;
-
 /**
  * Performs similarity comparisons with compressed vectors without decoding them
  */
@@ -73,6 +71,7 @@ abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFunction 
     }
 
     static class DotProductDecoder extends CachingDecoder {
+        private final int[] rearrangedNodes = new int[32 * cv.getCompressedSize()];
         public DotProductDecoder(PQVectors cv, float[] query) {
             super(cv, query, VectorSimilarityFunction.DOT_PRODUCT);
         }
@@ -83,16 +82,15 @@ abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFunction 
         }
 
         @Override
-        public float[] bulkSimilarityTo(int[] nodes) {
-            byte[] rearrangedNodes = new byte[32 * cv.getCompressedSize()];
+        public float[] bulkSimilarityTo(int[] nodes, int length, long neighborMask) {
             // look up nodes in cv, but arrange them to be put the 0th component of all vectors, then 1st component of all vectors, etc
-            for (int i = 0; i < nodes.length; i++) {
+            for (int i = 0; i < length; i++) {
                 byte[] encoded = cv.get(nodes[i]);
                 for (int j = 0; j < encoded.length; j++) {
                     rearrangedNodes[j * 32 + i] = encoded[j];
                 }
             }
-            return VectorUtil.bulkShuffleSimilarity(rearrangedNodes, ProductQuantization.CLUSTERS, tlPartials);
+            return VectorUtil.bulkShuffleSimilarity(rearrangedNodes, cv.getCompressedSize(), tlPartials, neighborMask);
         }
     }
 

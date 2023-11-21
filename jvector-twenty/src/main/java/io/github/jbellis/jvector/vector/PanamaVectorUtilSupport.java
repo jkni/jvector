@@ -115,8 +115,8 @@ PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     @Override
-    public float[] bulkShuffleSimilarity(byte[] data, int dataBase, byte[] dataOffsets) {
-        return SimdOps.bulkShuffleSimilarity(data, dataBase, dataOffsets);
+    public float[] bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, long neighborMask) {
+        return SimdOps.bulkShuffleSimilarity(shuffles, codebookCount, tlPartials, neighborMask);
     }
 
     @Override
