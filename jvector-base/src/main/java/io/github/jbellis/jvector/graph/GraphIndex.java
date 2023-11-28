@@ -104,6 +104,10 @@ public interface GraphIndex<T> extends AutoCloseable {
          */
         T getVector(int node);
 
+        default int[] getPackedNeighbors(int node) {
+            throw new UnsupportedOperationException();
+        }
+
         /**
          * Return a Bits instance indicating which nodes are live.  The result is undefined for
          * ordinals that do not correspond to nodes in the graph.

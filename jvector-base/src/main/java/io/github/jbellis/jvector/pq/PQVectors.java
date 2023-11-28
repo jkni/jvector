@@ -103,7 +103,7 @@ public class PQVectors implements CompressedVectors {
     public NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction) {
         switch (similarityFunction) {
             case DOT_PRODUCT:
-                return new FastPQDecoder.DotProductDecoder(this, q);
+                return new PQDecoder.DotProductDecoder(this, q);
             case EUCLIDEAN:
                 return new PQDecoder.EuclideanDecoder(this, q);
             case COSINE:
@@ -113,7 +113,7 @@ public class PQVectors implements CompressedVectors {
         }
     }
 
-    byte[] get(int ordinal) {
+    public byte[] get(int ordinal) {
         return compressedVectors[ordinal];
     }
 

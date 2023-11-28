@@ -15,6 +15,10 @@
  */
 package io.github.jbellis.jvector.pq;
 
+import io.github.jbellis.jvector.disk.CachingFusedGraphIndex;
+import io.github.jbellis.jvector.disk.CachingGraphIndex;
+import io.github.jbellis.jvector.disk.OnDiskFusedGraphIndex;
+import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorUtil;
@@ -22,7 +26,7 @@ import io.github.jbellis.jvector.vector.VectorUtil;
 /**
  * Performs similarity comparisons with compressed vectors without decoding them
  */
-abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFunction {
+public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFunction {
     protected final PQVectors cv;
 
     protected FastPQDecoder(PQVectors cv) {
@@ -70,10 +74,11 @@ abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFunction 
         }
     }
 
-    static class DotProductDecoder extends CachingDecoder {
-        private final int[] rearrangedNodes = new int[32 * cv.getCompressedSize()];
-        public DotProductDecoder(PQVectors cv, float[] query) {
+    public static class DotProductDecoder extends CachingDecoder {
+        private final GraphIndex.View<float[]> fgi;
+        public DotProductDecoder(PQVectors cv, CachingFusedGraphIndex fgi, float[] query) {
             super(cv, query, VectorSimilarityFunction.DOT_PRODUCT);
+            this.fgi = fgi.getView();
         }
 
         @Override
@@ -82,15 +87,10 @@ abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFunction 
         }
 
         @Override
-        public float[] bulkSimilarityTo(int[] nodes, int length, long neighborMask) {
+        public float[] bulkSimilarityTo(int node2) {
             // look up nodes in cv, but arrange them to be put the 0th component of all vectors, then 1st component of all vectors, etc
-            for (int i = 0; i < length; i++) {
-                byte[] encoded = cv.get(nodes[i]);
-                for (int j = 0; j < encoded.length; j++) {
-                    rearrangedNodes[j * 32 + i] = encoded[j];
-                }
-            }
-            return VectorUtil.bulkShuffleSimilarity(rearrangedNodes, cv.getCompressedSize(), tlPartials, neighborMask);
+            var permutedNodes = fgi.getPackedNeighbors(node2);
+            return VectorUtil.bulkShuffleSimilarity(permutedNodes, cv.getCompressedSize(), tlPartials, 0L);
         }
     }
 

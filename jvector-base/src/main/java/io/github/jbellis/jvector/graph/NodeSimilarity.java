@@ -44,12 +44,12 @@ public interface NodeSimilarity {
 
         float similarityTo(int node2);
 
-        default float[] bulkSimilarityTo(int[] nodes, int size, long neighborMask) {
-            var scores = new float[size];
-            for (var i = 0; i < size; i++) {
-                scores[i] = similarityTo(nodes[i]);
-            }
-            return scores;
+        default boolean supportsBulkSimilarity() {
+            return false;
+        }
+
+        default float[] bulkSimilarityTo(int node2) {
+            throw new UnsupportedOperationException();
         }
     }
 
