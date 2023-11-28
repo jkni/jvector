@@ -23,6 +23,8 @@ import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorUtil;
 
+import java.util.Arrays;
+
 /**
  * Performs similarity comparisons with compressed vectors without decoding them
  */
@@ -44,8 +46,8 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
 
             float[] center = pq.getCenter();
             var centeredQuery = center == null ? query : VectorUtil.sub(query, center);
-            var step = 2f / (127 * pq.getSubspaceCount());
-            int[] indexCounts = new int[128];
+            var step = 5f / (127 * pq.getSubspaceCount());
+            //int[] indexCounts = new int[128];
             for (var i = 0; i < pq.getSubspaceCount(); i++) {
                 int offset = pq.subvectorSizesAndOffsets[i][1];
                 int baseOffset = i * ProductQuantization.CLUSTERS;
@@ -54,10 +56,10 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
                     switch (vsf) {
                         case DOT_PRODUCT:
                             var dotProduct = VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length);
-                            var dotProductShifted = dotProduct + 1/pq.getSubspaceCount();
+                            var dotProductShifted = dotProduct + .02;
                             // dotProductShifted divided by step, must fall in the range 0 - 127
                             var index = (byte) Math.min(127, Math.max(0, Math.round(dotProductShifted / step)));
-                            indexCounts[index] = indexCounts[index] + 1;
+                            //indexCounts[index] = indexCounts[index] + 1;
                             tlPartials[baseOffset + j] = index;
                             break;
                         case EUCLIDEAN:
@@ -67,6 +69,7 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
                     }
                 }
             }
+            //System.out.println(Arrays.toString(indexCounts));
         }
 
         protected float decodedSimilarity(byte[] encoded) {
@@ -76,9 +79,11 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
 
     public static class DotProductDecoder extends CachingDecoder {
         private final GraphIndex.View<float[]> fgi;
+        private final float[] results;
         public DotProductDecoder(PQVectors cv, CachingFusedGraphIndex fgi, float[] query) {
             super(cv, query, VectorSimilarityFunction.DOT_PRODUCT);
             this.fgi = fgi.getView();
+            this.results = new float[fgi.maxDegree()];
         }
 
         @Override
@@ -90,7 +95,13 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
         public float[] bulkSimilarityTo(int node2) {
             // look up nodes in cv, but arrange them to be put the 0th component of all vectors, then 1st component of all vectors, etc
             var permutedNodes = fgi.getPackedNeighbors(node2);
-            return VectorUtil.bulkShuffleSimilarity(permutedNodes, cv.getCompressedSize(), tlPartials, 0L);
+            VectorUtil.bulkShuffleSimilarity(permutedNodes, cv.getCompressedSize(), tlPartials, results);
+            return results;
+        }
+
+        @Override
+        public boolean supportsBulkSimilarity() {
+            return true;
         }
     }
 

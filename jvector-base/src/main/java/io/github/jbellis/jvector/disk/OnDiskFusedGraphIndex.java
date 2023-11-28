@@ -148,7 +148,9 @@ public class OnDiskFusedGraphIndex<T> implements GraphIndex<T>, AutoCloseable, A
         public int[] getPackedNeighbors(int node) {
             try {
                 reader.seek(neighborsOffset +
-                        (node + 1) * (Integer.BYTES + (long) dimension * Float.BYTES + subspaceCount * maxDegree + Integer.BYTES * (maxDegree + 1)));
+                        (node + 1) * (Integer.BYTES + (long) dimension * Float.BYTES)
+                        + ((node) * (subspaceCount * maxDegree + Integer.BYTES * (maxDegree + 1))));
+
                 reader.readFully(packedNeighbors);
                 for (int i = 0; i < packedNeighbors.length; i++) {
                     convertedNeighbors[i] = packedNeighbors[i];

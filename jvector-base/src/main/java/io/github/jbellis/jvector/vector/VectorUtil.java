@@ -243,8 +243,8 @@ public final class VectorUtil {
     return impl.shuffleAndSum(data, dataBase, dataOffsets);
   }
 
-  public static float[] bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, long neighborMask) {
-    return impl.bulkShuffleSimilarity(shuffles, codebookCount, tlPartials, neighborMask);
+  public static void bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, float[] results) {
+    impl.bulkShuffleSimilarity(shuffles, codebookCount, tlPartials, results);
   }
 
   public static int hammingDistance(long[] v1, long[] v2) {

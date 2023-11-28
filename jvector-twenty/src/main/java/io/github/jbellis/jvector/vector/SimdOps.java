@@ -663,7 +663,7 @@ final class SimdOps {
         return res;
     }
 
-    public static float[] bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, long neighborMask) {
+    public static void bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, float[] results) {
 
         // 32 is from neighbor count
         // 16 is from CLUSTERS
@@ -676,13 +676,13 @@ final class SimdOps {
             tmpLeft = tmpLeft.add(partials.rearrange(shuffleLeft).castShape(FloatVector.SPECIES_512, 0));
             tmpRight = tmpRight.add(partials.rearrange(shuffleRight).castShape(FloatVector.SPECIES_512, 0));
         }
-        tmpLeft = tmpLeft.fma(2f/(127 * codebookCount), -1);
-        tmpRight = tmpRight.fma(2f/(127 * codebookCount), -1 );
-        tmpLeft = tmpLeft.fma(.5f, 1);
-        tmpRight = tmpRight.fma(.5f, 1);
-        float[] results = new float[32];
+        tmpLeft = tmpLeft.fma(5f/(127 * codebookCount), -1);
+        tmpRight = tmpRight.fma(5f/(127 * codebookCount), -1 );
+        tmpLeft = tmpLeft.add(1);
+        tmpRight = tmpRight.add(1);
+        tmpLeft = tmpLeft.div(2);
+        tmpRight = tmpRight.div(2);
         tmpLeft.intoArray(results, 0);
         tmpRight.intoArray(results, 16);
-        return results;
     }
 }

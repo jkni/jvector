@@ -92,5 +92,5 @@ public interface VectorUtilSupport {
 
   float shuffleAndSum(byte[] data, int dataBase, byte[] dataOffsets);
 
-  float[] bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, long mask);
+  void bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, float[] results);
 }

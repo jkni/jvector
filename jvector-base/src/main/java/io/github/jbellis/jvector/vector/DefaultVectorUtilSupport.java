@@ -280,7 +280,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float[] bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, long mask) {
+  public void bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, float[] results) {
     throw new UnsupportedOperationException("Not implemented");
   }
 }
