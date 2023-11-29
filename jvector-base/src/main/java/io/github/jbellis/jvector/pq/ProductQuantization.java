@@ -106,6 +106,66 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
             offset += size;
         }
         this.originalDimension = Arrays.stream(subvectorSizesAndOffsets).mapToInt(m -> m[0]).sum();
+        anneal();
+    }
+
+    private void anneal() {
+        // map dot product to cosine similarity
+        // average is 0
+        // standard deviation is .5 divided by codebookcount * 2
+        var stddev = 1 / M;
+
+        // run simulated annealing for each codebook
+        // 500,000 simulated innealing rounds
+        for (int j = 0; j < M; j++) {
+            var mapping = new int[CLUSTERS];
+            // initialize to identity mapping
+            for (int i = 0; i < CLUSTERS; i++) {
+                mapping[i] = i;
+            }
+            var temperature = 0.7;
+            var temperatureDecay = Math.pow(0.9, 1f/500);
+            var codebook = codebooks[j];
+            for (int i = 0; i < 500000; i++) {
+                // pick a random centroid
+                int m = ThreadLocalRandom.current().nextInt(CLUSTERS);
+                // pick a different random centroid
+                int n = ThreadLocalRandom.current().nextInt(CLUSTERS);
+                while (n == m) {
+                    n = ThreadLocalRandom.current().nextInt(CLUSTERS);
+                }
+                // compute the differences in distance loss with mappings for m and n swapped
+                // we'll take the dot product and then map it into the range of hamming distance 0 to 8
+                // to map dot product to hamming, we use the formula from polysemous codes
+                float oldLoss = 0;
+                float newLoss = 0;
+
+                for (int k = 0; i < CLUSTERS; i++) {
+                    var mappingM = mapping[m];
+                    var mappingN = mapping[n];
+                    var hammingM = Integer.bitCount(mappingM ^ mapping[k]);
+                    var hammingN = Integer.bitCount(mappingN ^ mapping[k]);
+                    var hammingDotM = 4 + VectorUtil.dotProduct(codebook[mappingM], codebook[mapping[k]]) * -(Math.sqrt(8) / (2 * stddev));
+                    var hammingDotN = 4 + VectorUtil.dotProduct(codebook[mappingN], codebook[mapping[k]]) * -(Math.sqrt(8) / (2 * stddev));
+                    oldLoss += (hammingM - hammingDotM) * (hammingM - hammingDotM) + (hammingN - hammingDotN) * (hammingN - hammingDotN);
+                    newLoss += (hammingM - hammingDotN) * (hammingM - hammingDotN) + (hammingN - hammingDotM) * (hammingN - hammingDotM);
+                }
+
+                if (newLoss <= oldLoss || ThreadLocalRandom.current().nextFloat() < temperature) {
+                    // perform the swap of m and n
+                    var temp = mapping[m];
+                    mapping[m] = mapping[n];
+                    mapping[n] = temp;
+                }
+                temperature *= temperatureDecay;
+            }
+            // apply the mapping
+            var newCodebook = new float[CLUSTERS][];
+            for (int i = 0; i < CLUSTERS; i++) {
+                newCodebook[i] = codebook[mapping[i]];
+            }
+            codebooks[j] = newCodebook;
+        }
     }
 
     @Override

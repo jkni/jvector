@@ -56,6 +56,7 @@ public class GraphSearcher<T> {
     private final NodeQueue candidates;
 
     private final BitSet visited;
+    private final static int APPROXIMATION_THRESHOLD = 2;
 
     /**
      * Creates a new graph searcher.
@@ -164,6 +165,9 @@ public class GraphSearcher<T> {
                                 int ep,
                                 Bits acceptOrds)
     {
+        var exactSearches = 0;
+        var approximateSearches = 0;
+        var iterations = 0;
         if (!scoreFunction.isExact() && reRanker == null) {
             throw new IllegalArgumentException("Either scoreFunction must be exact, or reRanker must not be null");
         }
@@ -174,7 +178,7 @@ public class GraphSearcher<T> {
         prepareScratchState(view.size());
         var scoreTracker = threshold > 0 ? new ScoreTracker.NormalDistributionTracker(threshold) : new ScoreTracker.NoOpTracker();
         if (ep < 0) {
-            return new SearchResult(new SearchResult.NodeScore[0], visited, 0);
+            return new SearchResult(new SearchResult.NodeScore[0], visited, 0, 0, 0);
         }
 
         acceptOrds = Bits.intersectionOf(acceptOrds, view.liveNodes());
@@ -227,18 +231,29 @@ public class GraphSearcher<T> {
                     continue;
                 }
                 numVisited++;
-
-                float friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                float friendSimilarity;
+                if (scoreFunction.hasFastSimilarity() && iterations > APPROXIMATION_THRESHOLD) {
+                    friendSimilarity = scoreFunction.fastSimilarityTo(friendOrd);
+                    approximateSearches++;
+                } else {
+                    friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                    exactSearches++;
+                }
                 scoreTracker.track(friendSimilarity);
                 if (friendSimilarity >= minAcceptedSimilarity) {
+                    if (scoreFunction.hasFastSimilarity() && iterations > APPROXIMATION_THRESHOLD) {
+                        friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                        exactSearches++;
+                    }
                     candidates.push(friendOrd, friendSimilarity);
                 }
             }
+            iterations++;
         }
 
         assert resultsQueue.size() <= topK;
         SearchResult.NodeScore[] nodes = extractScores(scoreFunction, reRanker, resultsQueue, vectorsEncountered);
-        return new SearchResult(nodes, visited, numVisited);
+        return new SearchResult(nodes, visited, numVisited, exactSearches, approximateSearches);
     }
 
     private static <T> SearchResult.NodeScore[] extractScores(NodeSimilarity.ScoreFunction sf,

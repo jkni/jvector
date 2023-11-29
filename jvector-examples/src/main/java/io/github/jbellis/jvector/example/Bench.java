@@ -106,8 +106,8 @@ public class Bench {
                         }
                         var pqr = performQueries(ds, floatVectors, cv, onDiskGraph, topK, topK * overquery, queryRuns);
                         var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
-                        System.out.format("  Query %stop %d/%d recall %.4f in %.2fs after %,d nodes visited%n",
-                                          compressor == null ? "(disk) " : "", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
+                        System.out.format("  Query %stop %d/%d recall %.4f in %.2fs after %,d nodes visited, %,d approximate similarities, %,d exact similarities%n",
+                                          compressor == null ? "(disk) " : "", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited, pqr.approximateSimilarities, pqr.exactSimilarities);
                     }
                 }
             }
@@ -133,10 +133,14 @@ public class Bench {
     static class ResultSummary {
         final int topKFound;
         final long nodesVisited;
+        final long approximateSimilarities;
+        final long exactSimilarities;
 
-        ResultSummary(int topKFound, long nodesVisited) {
+        ResultSummary(int topKFound, long nodesVisited, long approximateSimilarities, long exactSimilarities) {
             this.topKFound = topKFound;
             this.nodesVisited = nodesVisited;
+            this.approximateSimilarities = approximateSimilarities;
+            this.exactSimilarities = exactSimilarities;
         }
     }
 
@@ -159,6 +163,8 @@ public class Bench {
         assert efSearch >= topK;
         LongAdder topKfound = new LongAdder();
         LongAdder nodesVisited = new LongAdder();
+        LongAdder approximateSimilarities = new LongAdder();
+        LongAdder exactSimilarities = new LongAdder();
         for (int k = 0; k < queryRuns; k++) {
             IntStream.range(0, ds.queryVectors.size()).parallel().forEach(i -> {
                 var queryVector = ds.queryVectors.get(i);
@@ -178,9 +184,11 @@ public class Bench {
                 var n = topKCorrect(topK, sr.getNodes(), gt);
                 topKfound.add(n);
                 nodesVisited.add(sr.getVisitedCount());
+                approximateSimilarities.add(sr.getApproximateSimilarities());
+                exactSimilarities.add(sr.getExactSimilarities());
             });
         }
-        return new ResultSummary((int) topKfound.sum(), nodesVisited.sum()); // TODO do we care enough about visited count to hack it back into searcher?
+        return new ResultSummary((int) topKfound.sum(), nodesVisited.sum(), approximateSimilarities.sum(), exactSimilarities.sum()); // TODO do we care enough about visited count to hack it back into searcher?
     }
 
     public static void main(String[] args) throws IOException {

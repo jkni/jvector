@@ -64,8 +64,20 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
     }
 
     static class DotProductDecoder extends CachingDecoder {
+        private final byte[] encodedQuery;
         public DotProductDecoder(PQVectors cv, float[] query) {
             super(cv, query, VectorSimilarityFunction.DOT_PRODUCT);
+            this.encodedQuery = cv.pq.encode(query);
+        }
+
+        @Override
+        public boolean hasFastSimilarity() {
+            return true;
+        }
+
+        @Override
+        public float fastSimilarityTo(int node2) {
+            return (1 + (VectorUtil.hammingDistance(cv.get(node2), encodedQuery) - 4 * cv.pq.getSubspaceCount()) * -(2f / cv.pq.getSubspaceCount()) / (float) Math.sqrt(8)) / 2;
         }
 
         @Override

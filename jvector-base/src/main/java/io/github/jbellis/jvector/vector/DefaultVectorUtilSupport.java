@@ -273,4 +273,13 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     }
     return hd;
   }
+
+  @Override
+  public int hammingDistance(byte[] v1, byte[] v2) {
+    int hd = 0;
+    for (int i = 0; i < v1.length; i++) {
+      hd += Integer.bitCount(Byte.toUnsignedInt(v1[i]) ^ Byte.toUnsignedInt(v2[i]));
+    }
+    return hd;
+  }
 }

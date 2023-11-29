@@ -42,6 +42,14 @@ public interface NodeSimilarity {
     interface ScoreFunction {
         boolean isExact();
 
+        default boolean hasFastSimilarity() {
+            return false;
+        }
+
+        default float fastSimilarityTo(int node2) {
+            throw new UnsupportedOperationException();
+        }
+
         float similarityTo(int node2);
     }
 

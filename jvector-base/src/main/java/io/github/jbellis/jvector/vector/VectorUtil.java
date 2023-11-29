@@ -242,4 +242,7 @@ public final class VectorUtil {
   public static int hammingDistance(long[] v1, long[] v2) {
     return impl.hammingDistance(v1, v2);
   }
+  public static int hammingDistance(byte[] v1, byte[] v2) {
+    return impl.hammingDistance(v1, v2);
+  }
 }

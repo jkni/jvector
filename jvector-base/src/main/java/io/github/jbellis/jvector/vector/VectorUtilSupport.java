@@ -89,4 +89,5 @@ public interface VectorUtilSupport {
   public float assembleAndSum(float[] data, int baseIndex, byte[] baseOffsets);
 
   public int hammingDistance(long[] v1, long[] v2);
+  public int hammingDistance(byte[] v1, byte[] v2);
 }

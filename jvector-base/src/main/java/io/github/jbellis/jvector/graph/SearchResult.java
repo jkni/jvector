@@ -25,11 +25,15 @@ public final class SearchResult {
     private final NodeScore[] nodes;
     private final BitSet visited;
     private final int visitedCount;
+    private final int exactSimilarities;
+    private final int approximateSimilarities;
 
-    public SearchResult(NodeScore[] nodes, BitSet visited, int visitedCount) {
+    public SearchResult(NodeScore[] nodes, BitSet visited, int visitedCount, int exactSimilarities, int approximateSimilarities) {
         this.nodes = nodes;
         this.visited = visited;
         this.visitedCount = visitedCount;
+        this.exactSimilarities = exactSimilarities;
+        this.approximateSimilarities = approximateSimilarities;
     }
 
     /**
@@ -45,6 +49,14 @@ public final class SearchResult {
      */
     public NodeScore[] getNodes() {
         return nodes;
+    }
+
+    public int getExactSimilarities() {
+        return exactSimilarities;
+    }
+
+    public int getApproximateSimilarities() {
+        return approximateSimilarities;
     }
 
     /**
