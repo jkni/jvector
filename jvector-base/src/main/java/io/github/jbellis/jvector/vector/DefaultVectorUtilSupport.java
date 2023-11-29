@@ -24,6 +24,7 @@
 
 package io.github.jbellis.jvector.vector;
 
+import java.util.Arrays;
 import java.util.List;
 
 final class DefaultVectorUtilSupport implements VectorUtilSupport {
@@ -281,6 +282,15 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public void bulkShuffleSimilarity(int[] shuffles, int codebookCount, float[] tlPartials, float[] results) {
-    throw new UnsupportedOperationException("Not implemented");
+    Arrays.fill(results, 0.0f);
+    for (int i = 0; i < codebookCount; i++) {
+      for (int j = 0; j < 32; j++) {
+        results[j] += tlPartials[shuffles[i * 32 + j]];
+      }
+    }
+
+    for (int i = 0; i < results.length; i++) {
+        results[i] = (results[i] + 1) / 2;
+    }
   }
 }

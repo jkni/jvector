@@ -96,6 +96,7 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
         public float[] bulkSimilarityTo(int node2) {
             // look up nodes in cv, but arrange them to be put the 0th component of all vectors, then 1st component of all vectors, etc
             var permutedNodes = fgi.getPackedNeighbors(node2);
+            // TODO: fix mask
             VectorUtil.bulkShuffleSimilarity(permutedNodes, cv.getCompressedSize(), tlPartials, results);
             return results;
         }

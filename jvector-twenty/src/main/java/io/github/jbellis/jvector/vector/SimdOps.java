@@ -37,7 +37,6 @@ final class SimdOps {
     static final ThreadLocal<int[]> scratchInt512 = ThreadLocal.withInitial(() -> new int[IntVector.SPECIES_512.length()]);
     static final ThreadLocal<int[]> scratchInt256 = ThreadLocal.withInitial(() -> new int[IntVector.SPECIES_256.length()]);
 
-
     static float sum(float[] vector) {
         var sum = FloatVector.zero(FloatVector.SPECIES_PREFERRED);
         int vectorizedLength = FloatVector.SPECIES_PREFERRED.loopBound(vector.length);
@@ -663,8 +662,8 @@ final class SimdOps {
         return res;
     }
 
-    public static void bulkShuffleSimilarity(int[] shuffles, int codebookCount, float[] tlPartials, float[] results) {
 
+    public static void bulkShuffleSimilarity(int[] shuffles, int codebookCount, float[] tlPartials, float[] results) {
         // 32 is from neighbor count
         // 16 is from CLUSTERS
         var tmpLeft = FloatVector.zero(FloatVector.SPECIES_512);
