@@ -36,8 +36,8 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
     }
 
     protected static abstract class CachingDecoder extends FastPQDecoder {
-        protected final ThreadLocal<byte[]> partials = ThreadLocal.withInitial(() -> new byte[ProductQuantization.CLUSTERS * this.cv.pq.getSubspaceCount()]);
-        protected final byte[] tlPartials;
+        protected final ThreadLocal<float[]> partials = ThreadLocal.withInitial(() -> new float[ProductQuantization.CLUSTERS * this.cv.pq.getSubspaceCount()]);
+        protected final float[] tlPartials;
 
         protected CachingDecoder(PQVectors cv, float[] query, VectorSimilarityFunction vsf) {
             super(cv);
@@ -55,12 +55,13 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
                     float[] centroidSubvector = pq.codebooks[i][j];
                     switch (vsf) {
                         case DOT_PRODUCT:
-                            var dotProduct = VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length);
+                            /*var dotProduct = VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length);
                             var dotProductShifted = dotProduct + .02;
                             // dotProductShifted divided by step, must fall in the range 0 - 127
                             var index = (byte) Math.min(127, Math.max(0, Math.round(dotProductShifted / step)));
-                            //indexCounts[index] = indexCounts[index] + 1;
-                            tlPartials[baseOffset + j] = index;
+                            //indexCounts[index] = indexCounts[index] + 1;*/
+                            //tlPartials[baseOffset + j] = index
+                            tlPartials[baseOffset + j] = VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length);
                             break;
                         case EUCLIDEAN:
                             throw new UnsupportedOperationException("Unsupported similarity function " + vsf);

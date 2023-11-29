@@ -239,11 +239,11 @@ public final class VectorUtil {
     return impl.assembleAndSum(data, dataBase, dataOffsets);
   }
 
-  public static float shuffleAndSum(byte[] data, int dataBase, byte[] dataOffsets) {
+  public static float shuffleAndSum(float[] data, int dataBase, byte[] dataOffsets) {
     return impl.shuffleAndSum(data, dataBase, dataOffsets);
   }
 
-  public static void bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, float[] results) {
+  public static void bulkShuffleSimilarity(int[] shuffles, int codebookCount, float[] tlPartials, float[] results) {
     impl.bulkShuffleSimilarity(shuffles, codebookCount, tlPartials, results);
   }
 

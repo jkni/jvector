@@ -663,21 +663,19 @@ final class SimdOps {
         return res;
     }
 
-    public static void bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, float[] results) {
+    public static void bulkShuffleSimilarity(int[] shuffles, int codebookCount, float[] tlPartials, float[] results) {
 
         // 32 is from neighbor count
         // 16 is from CLUSTERS
         var tmpLeft = FloatVector.zero(FloatVector.SPECIES_512);
         var tmpRight = FloatVector.zero(FloatVector.SPECIES_512);
         for (int i = 0; i < codebookCount; i++) {
-            var shuffleLeft = VectorShuffle.fromArray(ByteVector.SPECIES_128, shuffles, i * 32);
-            var shuffleRight = VectorShuffle.fromArray(ByteVector.SPECIES_128, shuffles, i * 32 + 16);
-            var partials = ByteVector.SPECIES_128.fromArray(tlPartials, i * 16);
-            tmpLeft = tmpLeft.add(partials.rearrange(shuffleLeft).castShape(FloatVector.SPECIES_512, 0));
-            tmpRight = tmpRight.add(partials.rearrange(shuffleRight).castShape(FloatVector.SPECIES_512, 0));
+            var shuffleLeft = VectorShuffle.fromArray(FloatVector.SPECIES_512, shuffles, i * 32);
+            var shuffleRight = VectorShuffle.fromArray(FloatVector.SPECIES_512, shuffles, i * 32 + 16);
+            var partials = FloatVector.SPECIES_512.fromArray(tlPartials, i * 16);
+            tmpLeft = tmpLeft.add(partials.rearrange(shuffleLeft));
+            tmpRight = tmpRight.add(partials.rearrange(shuffleRight));
         }
-        tmpLeft = tmpLeft.fma(5f/(127 * codebookCount), -1);
-        tmpRight = tmpRight.fma(5f/(127 * codebookCount), -1 );
         tmpLeft = tmpLeft.add(1);
         tmpRight = tmpRight.add(1);
         tmpLeft = tmpLeft.div(2);

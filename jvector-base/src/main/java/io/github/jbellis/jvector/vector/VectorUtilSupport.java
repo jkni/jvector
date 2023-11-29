@@ -90,7 +90,7 @@ public interface VectorUtilSupport {
 
   public int hammingDistance(long[] v1, long[] v2);
 
-  float shuffleAndSum(byte[] data, int dataBase, byte[] dataOffsets);
+  float shuffleAndSum(float[] data, int dataBase, byte[] dataOffsets);
 
-  void bulkShuffleSimilarity(int[] shuffles, int codebookCount, byte[] tlPartials, float[] results);
+  void bulkShuffleSimilarity(int[] shuffles, int codebookCount, float[] tlPartials, float[] results);
 }
