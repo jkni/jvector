@@ -109,11 +109,6 @@ PanamaVectorUtilSupport implements VectorUtilSupport {
 
     @Override
     public int hammingDistance(byte[] v1, byte[] v2) {
-        // TODO: SIMDIFY
-        int hd = 0;
-        for (int i = 0; i < v1.length; i++) {
-            hd += Integer.bitCount(Byte.toUnsignedInt(v1[i]) ^ Byte.toUnsignedInt(v2[i]));
-        }
-        return hd;
+        return SimdOps.hammingDistance(v1, v2);
     }
 }

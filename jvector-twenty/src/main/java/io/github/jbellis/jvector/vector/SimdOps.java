@@ -658,4 +658,29 @@ final class SimdOps {
 
         return res;
     }
+
+    public static int hammingDistance(byte[] a, byte[] b) {
+        var sum = IntVector.zero(IntVector.SPECIES_PREFERRED);
+        int vectorizedLength = ByteVector.SPECIES_PREFERRED.loopBound(a.length);
+
+        // Process the vectorized part
+        for (int i = 0; i < vectorizedLength; i += ByteVector.SPECIES_PREFERRED.length()) {
+            var va = ByteVector.fromArray(ByteVector.SPECIES_PREFERRED, a, i);
+            var vb = ByteVector.fromArray(ByteVector.SPECIES_PREFERRED, b, i);
+            var iva = va.reinterpretAsInts();
+            var ivb = vb.reinterpretAsInts();
+
+            var xorResult = iva.lanewise(VectorOperators.XOR, ivb);
+            sum = sum.add(xorResult.lanewise(VectorOperators.BIT_COUNT));
+        }
+
+        int res = sum.reduceLanes(VectorOperators.ADD);
+
+        // Process the tail
+        for (int i = vectorizedLength; i < a.length; i++) {
+            res += Integer.bitCount(Byte.toUnsignedInt(a[i]) ^ Byte.toUnsignedInt(b[i]));
+        }
+
+        return res;
+    }
 }

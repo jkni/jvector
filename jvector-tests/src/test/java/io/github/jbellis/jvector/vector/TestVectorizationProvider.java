@@ -22,8 +22,25 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import java.util.Arrays;
+
 public class TestVectorizationProvider extends RandomizedTest {
     static boolean hasSimd = VectorizationProvider.vectorModulePresentAndReadable();
+
+    @Test
+    public void testByteBitCount() {
+        Assume.assumeTrue(hasSimd);
+
+        VectorizationProvider a = new DefaultVectorizationProvider();
+        VectorizationProvider b = VectorizationProvider.getInstance();
+        for (int i = 0; i < 1000; i++) {
+            byte[] v1 = TestUtil.randomVector8(getRandom(), 64);
+            byte[] v2 = TestUtil.randomVector8(getRandom(), 64);
+            System.out.println(Arrays.toString(v1));
+            System.out.println(Arrays.toString(v2));
+            Assert.assertEquals(a.getVectorUtilSupport().hammingDistance(v1, v2), b.getVectorUtilSupport().hammingDistance(v1, v2));
+        }
+    }
 
     @Test
     public void testSimilarityMetricsFloat() {
