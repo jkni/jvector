@@ -23,6 +23,7 @@ import io.github.jbellis.jvector.util.PoolingSupport;
 import io.github.jbellis.jvector.util.RamUsageEstimator;
 import io.github.jbellis.jvector.util.PhysicalCoreExecutor;
 import io.github.jbellis.jvector.vector.VectorUtil;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -112,17 +113,22 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
     private void anneal() {
         // map dot product to cosine similarity
         // average is 0
-        // standard deviation is .5 divided by codebookcount * 2
-        var stddev = 1 / M;
+        // standard deviation is .5 divided by codebookcount
+        var stddev = .5 / M;
 
         // run simulated annealing for each codebook
         // 500,000 simulated innealing rounds
         for (int j = 0; j < M; j++) {
             var mapping = new int[CLUSTERS];
             // initialize to identity mapping
+            //var describeStatistics = new DescriptiveStatistics();
             for (int i = 0; i < CLUSTERS; i++) {
                 mapping[i] = i;
+                /*for (int k = 0; k < CLUSTERS; k++) {
+                    describeStatistics.addValue(VectorUtil.dotProduct(codebooks[j][i], codebooks[j][k]));
+                }*/
             }
+            //System.out.println("Mean " + describeStatistics.getMean() + " stddev " + describeStatistics.getStandardDeviation());
             var temperature = 0.7;
             var temperatureDecay = Math.pow(0.9, 1f/500);
             var codebook = codebooks[j];
