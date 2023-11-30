@@ -232,7 +232,7 @@ public class GraphSearcher<T> {
                 }
                 numVisited++;
                 float friendSimilarity;
-                if (scoreFunction.hasFastSimilarity() && iterations > APPROXIMATION_THRESHOLD) {
+                if (scoreFunction.hasFastSimilarity() && resultsQueue.size() >= topK) {
                     friendSimilarity = scoreFunction.fastSimilarityTo(friendOrd);
                     approximateSearches++;
                 } else {
@@ -241,7 +241,7 @@ public class GraphSearcher<T> {
                 }
                 scoreTracker.track(friendSimilarity);
                 if (friendSimilarity >= minAcceptedSimilarity) {
-                    if (scoreFunction.hasFastSimilarity() && iterations > APPROXIMATION_THRESHOLD) {
+                    if (scoreFunction.hasFastSimilarity() && resultsQueue.size() >= topK) {
                         friendSimilarity = scoreFunction.similarityTo(friendOrd);
                         exactSearches++;
                     }

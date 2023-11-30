@@ -116,10 +116,15 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
             for (int j = i + 1; j < CLUSTERS; j++) {
                 var hammingI = Integer.bitCount(mapping[i] ^ mapping[j]);
                 var hammingDotI = 4 + VectorUtil.dotProduct(codebooks[codebook][i], codebooks[codebook][j]) * -(Math.sqrt(8) / (2 * .5 / M));
-                error += (hammingI - hammingDotI) * (hammingI - hammingDotI);
+                var weightError = weightError(hammingDotI);
+                error += weightError * (hammingI - hammingDotI) * (hammingI - hammingDotI);
             }
         }
         return error;
+    }
+
+    private double weightError(double mappedDotProduct) {
+        return Math.pow(0.2, mappedDotProduct);
     }
 
     private void anneal() {
@@ -166,8 +171,10 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
                     var hammingN = Integer.bitCount(mappingN ^ mapping[k]);
                     var hammingDotM = 4 + VectorUtil.dotProduct(codebook[m], codebook[k]) * -(Math.sqrt(8) / (2 * stddev));
                     var hammingDotN = 4 + VectorUtil.dotProduct(codebook[n], codebook[k]) * -(Math.sqrt(8) / (2 * stddev));
-                    oldLoss += (hammingM - hammingDotM) * (hammingM - hammingDotM) + (hammingN - hammingDotN) * (hammingN - hammingDotN);
-                    newLoss += (hammingM - hammingDotN) * (hammingM - hammingDotN) + (hammingN - hammingDotM) * (hammingN - hammingDotM);
+                    var weightDotM = weightError(hammingDotM);
+                    var weightDotN = weightError(hammingDotN);
+                    oldLoss += weightDotM * (hammingM - hammingDotM) * (hammingM - hammingDotM) + weightDotN * (hammingN - hammingDotN) * (hammingN - hammingDotN);
+                    newLoss += weightDotN * (hammingM - hammingDotN) * (hammingM - hammingDotN) + weightDotM * (hammingN - hammingDotM) * (hammingN - hammingDotM);
                 }
 
                 if (newLoss <= oldLoss || ThreadLocalRandom.current().nextFloat() < temperature) {
