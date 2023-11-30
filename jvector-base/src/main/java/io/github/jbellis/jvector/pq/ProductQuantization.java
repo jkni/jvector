@@ -110,6 +110,18 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
         anneal();
     }
 
+    private double calculateError(int[] mapping, int codebook) {
+        double error = 0;
+        for (int i = 0; i < CLUSTERS; i++) {
+            for (int j = i + 1; j < CLUSTERS; j++) {
+                var hammingI = Integer.bitCount(mapping[i] ^ mapping[j]);
+                var hammingDotI = 4 + VectorUtil.dotProduct(codebooks[codebook][i], codebooks[codebook][j]) * -(Math.sqrt(8) / (2 * .5 / M));
+                error += (hammingI - hammingDotI) * (hammingI - hammingDotI);
+            }
+        }
+        return error;
+    }
+
     private void anneal() {
         // map dot product to cosine similarity
         // average is 0
@@ -128,6 +140,7 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
                     describeStatistics.addValue(VectorUtil.dotProduct(codebooks[j][i], codebooks[j][k]));
                 }*/
             }
+            //System.out.println("Starting error " + calculateError(mapping, j));
             //System.out.println("Mean " + describeStatistics.getMean() + " stddev " + describeStatistics.getStandardDeviation());
             var temperature = 0.7;
             var temperatureDecay = Math.pow(0.9, 1f/500);
@@ -143,16 +156,16 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
                 // compute the differences in distance loss with mappings for m and n swapped
                 // we'll take the dot product and then map it into the range of hamming distance 0 to 8
                 // to map dot product to hamming, we use the formula from polysemous codes
-                float oldLoss = 0;
-                float newLoss = 0;
+                double oldLoss = 0;
+                double newLoss = 0;
 
-                for (int k = 0; i < CLUSTERS; i++) {
+                for (int k = 0; k < CLUSTERS; k++) {
                     var mappingM = mapping[m];
                     var mappingN = mapping[n];
                     var hammingM = Integer.bitCount(mappingM ^ mapping[k]);
                     var hammingN = Integer.bitCount(mappingN ^ mapping[k]);
-                    var hammingDotM = 4 + VectorUtil.dotProduct(codebook[mappingM], codebook[mapping[k]]) * -(Math.sqrt(8) / (2 * stddev));
-                    var hammingDotN = 4 + VectorUtil.dotProduct(codebook[mappingN], codebook[mapping[k]]) * -(Math.sqrt(8) / (2 * stddev));
+                    var hammingDotM = 4 + VectorUtil.dotProduct(codebook[m], codebook[k]) * -(Math.sqrt(8) / (2 * stddev));
+                    var hammingDotN = 4 + VectorUtil.dotProduct(codebook[n], codebook[k]) * -(Math.sqrt(8) / (2 * stddev));
                     oldLoss += (hammingM - hammingDotM) * (hammingM - hammingDotM) + (hammingN - hammingDotN) * (hammingN - hammingDotN);
                     newLoss += (hammingM - hammingDotN) * (hammingM - hammingDotN) + (hammingN - hammingDotM) * (hammingN - hammingDotM);
                 }
@@ -165,10 +178,12 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
                 }
                 temperature *= temperatureDecay;
             }
+
+            //System.out.println("Ending error " + calculateError(mapping, j));
             // apply the mapping
             var newCodebook = new float[CLUSTERS][];
             for (int i = 0; i < CLUSTERS; i++) {
-                newCodebook[i] = codebook[mapping[i]];
+                newCodebook[mapping[i]] = codebook[i];
             }
             codebooks[j] = newCodebook;
         }
