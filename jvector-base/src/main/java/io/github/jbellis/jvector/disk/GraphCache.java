@@ -42,7 +42,12 @@ public abstract class GraphCache implements Accountable
     {
         if (distance < 0)
             return new EmptyGraphCache();
-        return new CHMGraphCache(graph, distance);
+        if (graph instanceof OnDiskGraphIndex) {
+            System.out.println("Using ArrayGraphCache for disk");
+            return new ArrayGraphCache(graph, distance);
+        }
+        else
+            return new CHMGraphCache(graph, distance);
     }
 
     public abstract long ramBytesUsed();
@@ -61,8 +66,51 @@ public abstract class GraphCache implements Accountable
         }
     }
 
-    private static final class CHMGraphCache extends GraphCache
-    {
+    private static final class ArrayGraphCache extends GraphCache {
+        private final CachedNode[] cache;
+        private long ramBytesUsed = 0;
+
+        public ArrayGraphCache(GraphIndex<float[]> graph, int distance) {
+            var view = graph.getView();
+            cache = new CachedNode[1 + (int) Math.ceil(Math.pow(graph.maxDegree(), distance + 1))];
+            cacheNeighborsOf(view, view.entryNode(), distance);
+        }
+
+        private void cacheNeighborsOf(GraphIndex.View<float[]> view, int ordinal, int distance) {
+            // cache this node
+            var it = view.getNeighborsIterator(ordinal);
+            int[] neighbors = new int[it.size()];
+            int i = 0;
+            while (it.hasNext()) {
+                neighbors[i++] = it.next();
+            }
+            var node = new CachedNode(view.getVector(ordinal), neighbors);
+            cache[ordinal] = node;
+            ramBytesUsed += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + RamUsageEstimator.sizeOf(node.vector) + RamUsageEstimator.sizeOf(node.neighbors);
+
+            // call recursively on neighbors
+            if (distance > 0) {
+                for (var neighbor : neighbors) {
+                    if (cache[neighbor] == null) {
+                        cacheNeighborsOf(view, neighbor, distance - 1);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public CachedNode getNode(int ordinal) {
+            return cache[ordinal];
+        }
+
+        @Override
+        public long ramBytesUsed()
+        {
+            return ramBytesUsed;
+        }
+    }
+
+    private static final class CHMGraphCache extends GraphCache {
         private final ConcurrentHashMap<Integer, CachedNode> cache = new ConcurrentHashMap<>();
         private long ramBytesUsed = 0;
 
@@ -92,7 +140,6 @@ public abstract class GraphCache implements Accountable
                 }
             }
         }
-
 
         @Override
         public CachedNode getNode(int ordinal) {

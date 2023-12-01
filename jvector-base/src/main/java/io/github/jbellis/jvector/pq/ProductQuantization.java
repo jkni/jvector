@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -118,6 +119,15 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
      */
     public byte[][] encodeAll(List<float[]> vectors) {
         return PhysicalCoreExecutor.instance.submit(() ->vectors.stream().parallel().map(this::encode).toArray(byte[][]::new));
+    }
+
+    public byte[][] encodeAll(List<float[]> vectors, Map<Integer, Integer> renumbering) {
+        var encoded = PhysicalCoreExecutor.instance.submit(() ->vectors.stream().parallel().map(this::encode).toArray(byte[][]::new));
+        var y = new byte[encoded.length][];
+        for (int i = 0; i < encoded.length; i++) {
+            y[renumbering.get(i)] = encoded[i];
+        }
+        return y;
     }
 
     /**

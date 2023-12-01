@@ -81,6 +81,9 @@ public class Bench {
                 OnDiskGraphIndex.write(onHeapGraph, floatVectors, outputStream);
             }
             try (var onDiskGraph = new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0))) {
+                var renumbering = OnDiskGraphIndex.getSequentialRenumbering(onHeapGraph);
+                var newDs = ds.renumber(renumbering);
+
                 for (var cf : compressionGrid) {
                     var compressor = getCompressor(cf, ds);
                     CompressedVectors cv;
@@ -89,7 +92,7 @@ public class Bench {
                         System.out.format("Uncompressed vectors%n");
                     } else {
                         start = System.nanoTime();
-                        var quantizedVectors = compressor.encodeAll(ds.baseVectors);
+                        var quantizedVectors = compressor.encodeAll(ds.baseVectors, renumbering);
                         cv = compressor.createCompressedVectors(quantizedVectors);
                         System.out.format("%s encoded %,d vectors [%.2f MB] in %.2fs%n", compressor, ds.baseVectors.size(), (cv.ramBytesUsed() / 1024f / 1024f), (System.nanoTime() - start) / 1_000_000_000.0);
                     }
@@ -99,12 +102,12 @@ public class Bench {
                         start = System.nanoTime();
                         if (compressor == null) {
                             // include both in-memory and on-disk search of uncompressed vectors
-                            var pqr = performQueries(ds, floatVectors, cv, onHeapGraph, topK, topK * overquery, queryRuns);
+                            var pqr = performQueries(newDs, floatVectors, cv, onHeapGraph, topK, topK * overquery, queryRuns, renumbering);
                             var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
                             System.out.format("  Query %s top %d/%d recall %.4f in %.2fs after %,d nodes visited%n",
                                               "(memory)", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
                         }
-                        var pqr = performQueries(ds, floatVectors, cv, onDiskGraph, topK, topK * overquery, queryRuns);
+                        var pqr = performQueries(newDs, floatVectors, cv, onDiskGraph, topK, topK * overquery, queryRuns, renumbering);
                         var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
                         System.out.format("  Query %stop %d/%d recall %.4f in %.2fs after %,d nodes visited%n",
                                           compressor == null ? "(disk) " : "", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
@@ -114,6 +117,14 @@ public class Bench {
         } finally {
             Files.deleteIfExists(graphPath);
         }
+    }
+
+    private static Object[] reorderCompressed(Object[] quantizedVectors, Map<Integer, Integer> renumbering) {
+        Object[]reordered = new Object[quantizedVectors.length];
+        for (int i = 0; i < quantizedVectors.length; i++) {
+            reordered[renumbering.get(i)] = quantizedVectors[i];
+        }
+        return reordered;
     }
 
     // avoid recomputing the compressor repeatedly (this is a relatively small memory footprint)
@@ -155,7 +166,7 @@ public class Bench {
         return topKCorrect(topK, a, gt);
     }
 
-    private static ResultSummary performQueries(DataSet ds, RandomAccessVectorValues<float[]> exactVv, CompressedVectors cv, GraphIndex<float[]> index, int topK, int efSearch, int queryRuns) {
+    private static ResultSummary performQueries(DataSet ds, RandomAccessVectorValues<float[]> exactVv, CompressedVectors cv, GraphIndex<float[]> index, int topK, int efSearch, int queryRuns, Map<Integer, Integer> renumbering) {
         assert efSearch >= topK;
         LongAdder topKfound = new LongAdder();
         LongAdder nodesVisited = new LongAdder();
@@ -188,10 +199,10 @@ public class Bench {
 
         var mGrid = List.of(16); // List.of(8, 12, 16, 24, 32, 48, 64);
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
-        var efSearchGrid = List.of(1, 2);
+        var efSearchGrid = List.of(6, 1, 2);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
-                null, // uncompressed
-                ds -> BinaryQuantization.compute(ds.getBaseRavv()),
+                //null, // uncompressed
+                //ds -> BinaryQuantization.compute(ds.getBaseRavv()),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 8, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
 

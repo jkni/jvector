@@ -19,6 +19,7 @@ package io.github.jbellis.jvector.pq;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Interface for vector compression.  T is the encoded (compressed) vector type;
@@ -26,6 +27,9 @@ import java.util.List;
  */
 public interface VectorCompressor<T> {
     T[] encodeAll(List<float[]> vectors);
+    default T[] encodeAll(List<float[]> vectors, Map<Integer, Integer> renumbering) {
+        throw new UnsupportedOperationException();
+    }
 
     T encode(float[] v);
 

@@ -22,6 +22,7 @@ import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.util.Bits;
+import io.github.jbellis.jvector.util.SparseFixedBitSet;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -29,6 +30,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -65,9 +67,30 @@ public class OnDiskGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accoun
         try (var view = graph.getView()) {
             Map<Integer, Integer> oldToNewMap = new HashMap<>();
             int nextOrdinal = 0;
+            // queue of nodes to visit
+            var queue = new LinkedList<Integer>();
+            var bitset = new SparseFixedBitSet(view.getIdUpperBound());
+            queue.add(view.entryNode());
+            while (!queue.isEmpty()) {
+                int node = queue.remove();
+                if (bitset.get(node)) {
+                    continue;
+                }
+                bitset.set(node);
+                oldToNewMap.put(node, nextOrdinal++);
+                var neighbors = view.getNeighborsIterator(node);
+                while (neighbors.hasNext()) {
+                    int neighbor = neighbors.nextInt();
+                    if (!bitset.get(neighbor)) {
+                        queue.add(neighbor);
+                    }
+                }
+            }
             for (int i = 0; i < view.getIdUpperBound(); i++) {
-                if (graph.containsNode(i)) {
+                if (graph.containsNode(i) && !bitset.get(i)) {
+                    bitset.set(i);
                     oldToNewMap.put(i, nextOrdinal++);
+                    System.out.println("WARNING: node " + i + " is unreachable from entry node " + view.entryNode());
                 }
             }
             return oldToNewMap;

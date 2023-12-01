@@ -57,6 +57,18 @@ public class DataSet {
                 name, baseVectors.size(), queryVectors.size(), baseVectors.get(0).length);
     }
 
+    public DataSet renumber(Map<Integer, Integer> renumbering) {
+        var renumberedGt = new ArrayList<Set<Integer>>(groundTruth.size());
+        for (Set<Integer> gt : groundTruth) {
+            var newGt = new HashSet<Integer>();
+            for (int i : gt) {
+                newGt.add(renumbering.get(i));
+            }
+            renumberedGt.add(newGt);
+        }
+        return new DataSet(this.name, this.similarityFunction, this.baseVectors, this.queryVectors, renumberedGt);
+    }
+
     /**
      * Return a dataset containing the given vectors, scrubbed free from zero vectors and normalized to unit length.
      * Note: This only scrubs and normalizes for dot product similarity.
