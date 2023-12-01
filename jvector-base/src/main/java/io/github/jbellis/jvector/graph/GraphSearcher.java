@@ -56,7 +56,7 @@ public class GraphSearcher<T> {
     private final NodeQueue candidates;
 
     private final BitSet visited;
-    private final static int APPROXIMATION_THRESHOLD = 150;
+    private final static int APPROXIMATION_THRESHOLD = 125;
 
     /**
      * Creates a new graph searcher.
@@ -209,21 +209,17 @@ public class GraphSearcher<T> {
         while (candidates.size() > 0 && !resultsQueue.incomplete()) {
             // done when best candidate is worse than the worst result so far
             float topCandidateScore = candidates.topScore();
-            if (topCandidateScore < minAcceptedSimilarity) {
-                break;
-            }
-
-
-            // periodically check whether we're likely to find a node above the threshold in the future
-            if (scoreTracker.shouldStop(numVisited)) {
-                break;
-            }
-
-            // add the top candidate to the resultset
             int topCandidateNode = candidates.pop();
 
             if (!scoreFunction.isExact()) {
                 vectorsEncountered.put(topCandidateNode, view.getVector(topCandidateNode));
+            }
+            if (topCandidateScore < minAcceptedSimilarity) {
+                break;
+            }
+            // periodically check whether we're likely to find a node above the threshold in the future
+            if (scoreTracker.shouldStop(numVisited)) {
+                break;
             }
 
             // add its neighbors to the candidates queue

@@ -22,6 +22,7 @@ import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.util.PoolingSupport;
 import io.github.jbellis.jvector.util.RamUsageEstimator;
 import io.github.jbellis.jvector.util.PhysicalCoreExecutor;
+import io.github.jbellis.jvector.vector.DefaultVectorizationProvider;
 import io.github.jbellis.jvector.vector.VectorUtil;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
@@ -124,19 +125,24 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
     }
 
     private double weightError(double mappedDotProduct) {
-        return Math.pow(0.2, mappedDotProduct);
+        return Math.pow(0.5, mappedDotProduct);
+        //return 1d;
     }
 
     private void anneal() {
         // map dot product to cosine similarity
         // average is 0
         // standard deviation is .5 divided by codebookcount
-        var stddev = .5 / M;
+        // make stddev wider for better use of our bits
+        //var stddev = .5 / M;
+        var stddev = 1 / M;
 
         // run simulated annealing for each codebook
         // 500,000 simulated innealing rounds
         for (int j = 0; j < M; j++) {
             var mapping = new int[CLUSTERS];
+            var cachedDotProduct = new double[CLUSTERS * CLUSTERS];
+            var cachedWeights = new double[CLUSTERS * CLUSTERS];
             // initialize to identity mapping
             //var describeStatistics = new DescriptiveStatistics();
             for (int i = 0; i < CLUSTERS; i++) {
@@ -150,6 +156,13 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
             var temperature = 0.7;
             var temperatureDecay = Math.pow(0.9, 1f/500);
             var codebook = codebooks[j];
+            for (int y = 0; y < CLUSTERS; y++) {
+                for (int x = 0; x < CLUSTERS; x++) {
+                    var hammingDot = 4 + VectorUtil.dotProduct(codebook[y], codebook[x]) * -(Math.sqrt(8) / (2 * stddev));
+                    cachedDotProduct[y * CLUSTERS + x] = hammingDot;
+                    cachedWeights[y * CLUSTERS + x] = weightError(hammingDot);
+                }
+            }
             for (int i = 0; i < 500000; i++) {
                 // pick a random centroid
                 int m = ThreadLocalRandom.current().nextInt(CLUSTERS);
@@ -163,21 +176,24 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
                 // to map dot product to hamming, we use the formula from polysemous codes
                 double oldLoss = 0;
                 double newLoss = 0;
+                boolean tempSwap = ThreadLocalRandom.current().nextFloat() < temperature;
 
-                for (int k = 0; k < CLUSTERS; k++) {
-                    var mappingM = mapping[m];
-                    var mappingN = mapping[n];
-                    var hammingM = Integer.bitCount(mappingM ^ mapping[k]);
-                    var hammingN = Integer.bitCount(mappingN ^ mapping[k]);
-                    var hammingDotM = 4 + VectorUtil.dotProduct(codebook[m], codebook[k]) * -(Math.sqrt(8) / (2 * stddev));
-                    var hammingDotN = 4 + VectorUtil.dotProduct(codebook[n], codebook[k]) * -(Math.sqrt(8) / (2 * stddev));
-                    var weightDotM = weightError(hammingDotM);
-                    var weightDotN = weightError(hammingDotN);
-                    oldLoss += weightDotM * (hammingM - hammingDotM) * (hammingM - hammingDotM) + weightDotN * (hammingN - hammingDotN) * (hammingN - hammingDotN);
-                    newLoss += weightDotN * (hammingM - hammingDotN) * (hammingM - hammingDotN) + weightDotM * (hammingN - hammingDotM) * (hammingN - hammingDotM);
+                if (!tempSwap) {
+                    for (int k = 0; k < CLUSTERS; k++) {
+                        var mappingM = mapping[m];
+                        var mappingN = mapping[n];
+                        var hammingM = Integer.bitCount(mappingM ^ mapping[k]);
+                        var hammingN = Integer.bitCount(mappingN ^ mapping[k]);
+                        var hammingDotM = cachedDotProduct[m * CLUSTERS + k];
+                        var hammingDotN = cachedDotProduct[n * CLUSTERS + k];
+                        var weightDotM = cachedWeights[m * CLUSTERS + k];
+                        var weightDotN = cachedWeights[m * CLUSTERS + k];
+                        oldLoss += weightDotM * (hammingM - hammingDotM) * (hammingM - hammingDotM) + weightDotN * (hammingN - hammingDotN) * (hammingN - hammingDotN);
+                        newLoss += weightDotN * (hammingM - hammingDotN) * (hammingM - hammingDotN) + weightDotM * (hammingN - hammingDotM) * (hammingN - hammingDotM);
+                    }
                 }
 
-                if (newLoss <= oldLoss || ThreadLocalRandom.current().nextFloat() < temperature) {
+                if (newLoss <= oldLoss) {
                     // perform the swap of m and n
                     var temp = mapping[m];
                     mapping[m] = mapping[n];

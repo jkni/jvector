@@ -62,7 +62,7 @@ public class Bench {
     private static void testRecall(int M,
                                    int efConstruction,
                                    List<Function<DataSet, VectorCompressor<?>>> compressionGrid,
-                                   List<Integer> efSearchOptions,
+                                   List<Float> efSearchOptions,
                                    DataSet ds,
                                    Path testDirectory) throws IOException
     {
@@ -95,18 +95,18 @@ public class Bench {
                     }
 
                     int queryRuns = 2;
-                    for (int overquery : efSearchOptions) {
+                    for (float overquery : efSearchOptions) {
                         start = System.nanoTime();
                         if (compressor == null) {
                             // include both in-memory and on-disk search of uncompressed vectors
-                            var pqr = performQueries(ds, floatVectors, cv, onHeapGraph, topK, topK * overquery, queryRuns);
+                            var pqr = performQueries(ds, floatVectors, cv, onHeapGraph, topK, (int) (topK * overquery), queryRuns);
                             var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
-                            System.out.format("  Query %s top %d/%d recall %.4f in %.2fs after %,d nodes visited%n",
+                            System.out.format("  Query %s top %d/%.2f recall %.4f in %.2fs after %,d nodes visited%n",
                                               "(memory)", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
                         }
-                        var pqr = performQueries(ds, floatVectors, cv, onDiskGraph, topK, topK * overquery, queryRuns);
+                        var pqr = performQueries(ds, floatVectors, cv, onDiskGraph, topK, (int) (topK * overquery), queryRuns);
                         var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
-                        System.out.format("  Query %stop %d/%d recall %.4f in %.2fs after %,d nodes visited, %,d approximate similarities, %,d exact similarities%n",
+                        System.out.format("  Query %s top %d/%.2f recall %.4f in %.2fs after %,d nodes visited, %,d approximate similarities, %,d exact similarities%n",
                                           compressor == null ? "(disk) " : "", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited, pqr.approximateSimilarities, pqr.exactSimilarities);
                     }
                 }
@@ -196,7 +196,7 @@ public class Bench {
 
         var mGrid = List.of(16); // List.of(8, 12, 16, 24, 32, 48, 64);
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
-        var efSearchGrid = List.of(1, 2);
+        List<Float> efSearchGrid = List.of(1f, 2f, 2.2f, 2.5f, 2.8f, 3.0f);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
                 null, // uncompressed
                 ds -> BinaryQuantization.compute(ds.getBaseRavv()),
@@ -269,7 +269,7 @@ public class Bench {
                                    List<Function<DataSet, VectorCompressor<?>>> compressionGrid,
                                    List<Integer> mGrid,
                                    List<Integer> efConstructionGrid,
-                                   List<Integer> efSearchFactor) throws IOException
+                                   List<Float> efSearchFactor) throws IOException
     {
         var testDirectory = Files.createTempDirectory("BenchGraphDir");
         try {
