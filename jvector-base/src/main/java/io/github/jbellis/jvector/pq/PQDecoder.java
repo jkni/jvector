@@ -77,7 +77,10 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
 
         @Override
         public float fastSimilarityTo(int node2) {
-            return (1 + (VectorUtil.hammingDistance(cv.get(node2), encodedQuery) - 4 * cv.pq.getSubspaceCount()) / -(cv.pq.getSubspaceCount() * (float) Math.sqrt(8))) / 2;
+            float reconstructedDotProduct = VectorUtil.hammingDistance(cv.get(node2), encodedQuery) - 4 * cv.pq.getSubspaceCount();
+            var stddev = .5f / cv.pq.getSubspaceCount();
+            reconstructedDotProduct = reconstructedDotProduct * -2 * stddev / (float) Math.sqrt(8);
+            return (1 + reconstructedDotProduct) / 2;
         }
 
         @Override

@@ -196,10 +196,10 @@ public class Bench {
 
         var mGrid = List.of(16); // List.of(8, 12, 16, 24, 32, 48, 64);
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
-        List<Float> efSearchGrid = List.of(1f, 2f, 2.2f, 2.5f, 2.8f, 3.0f);
+        List<Float> efSearchGrid = List.of(1f, 2f);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
-                null, // uncompressed
-                ds -> BinaryQuantization.compute(ds.getBaseRavv()),
+                //null, // uncompressed
+                //ds -> BinaryQuantization.compute(ds.getBaseRavv()),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 8, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
 

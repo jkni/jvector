@@ -37,6 +37,7 @@ import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static java.lang.Math.min;
 
@@ -56,7 +57,7 @@ public class GraphSearcher<T> {
     private final NodeQueue candidates;
 
     private final BitSet visited;
-    private final static int APPROXIMATION_THRESHOLD = 125;
+    private final static int APPROXIMATION_THRESHOLD = 75;
 
     /**
      * Creates a new graph searcher.

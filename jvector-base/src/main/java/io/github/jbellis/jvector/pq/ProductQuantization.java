@@ -111,17 +111,18 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
         anneal();
     }
 
-    private double calculateError(int[] mapping, int codebook) {
-        double error = 0;
+    private double calculateCost(int[] mapping, int codebook, double mean, double stddev) {
+        double cost = 0;
+        //var stddev = 1f / M;
         for (int i = 0; i < CLUSTERS; i++) {
-            for (int j = i + 1; j < CLUSTERS; j++) {
+            for (int j = 0; j < CLUSTERS; j++) {
                 var hammingI = Integer.bitCount(mapping[i] ^ mapping[j]);
-                var hammingDotI = 4 + VectorUtil.dotProduct(codebooks[codebook][i], codebooks[codebook][j]) * -(Math.sqrt(8) / (2 * .5 / M));
+                var hammingDotI = 4 + (VectorUtil.dotProduct(codebooks[codebook][i], codebooks[codebook][j]) - mean) * -(Math.sqrt(8) / (2 * stddev));
                 var weightError = weightError(hammingDotI);
-                error += weightError * (hammingI - hammingDotI) * (hammingI - hammingDotI);
+                cost += weightError * (hammingI - hammingDotI) * (hammingI - hammingDotI);
             }
         }
-        return error;
+        return cost;
     }
 
     private double weightError(double mappedDotProduct) {
@@ -135,7 +136,6 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
         // standard deviation is .5 divided by codebookcount
         // make stddev wider for better use of our bits
         //var stddev = .5 / M;
-        var stddev = 1 / M;
 
         // run simulated annealing for each codebook
         // 500,000 simulated innealing rounds
@@ -144,21 +144,25 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
             var cachedDotProduct = new double[CLUSTERS * CLUSTERS];
             var cachedWeights = new double[CLUSTERS * CLUSTERS];
             // initialize to identity mapping
-            //var describeStatistics = new DescriptiveStatistics();
+            var describeStatistics = new DescriptiveStatistics();
             for (int i = 0; i < CLUSTERS; i++) {
                 mapping[i] = i;
-                /*for (int k = 0; k < CLUSTERS; k++) {
+                for (int k = 0; k < CLUSTERS; k++) {
                     describeStatistics.addValue(VectorUtil.dotProduct(codebooks[j][i], codebooks[j][k]));
-                }*/
+                }
             }
-            //System.out.println("Starting error " + calculateError(mapping, j));
             //System.out.println("Mean " + describeStatistics.getMean() + " stddev " + describeStatistics.getStandardDeviation());
+            //var stddev = describeStatistics.getStandardDeviation();
+            var stddev = .5/M;
+            //var mean = describeStatistics.getMean();
+            var mean = 0;
+            var startingCost = calculateCost(mapping, j, mean, stddev);
             var temperature = 0.7;
             var temperatureDecay = Math.pow(0.9, 1f/500);
             var codebook = codebooks[j];
             for (int y = 0; y < CLUSTERS; y++) {
                 for (int x = 0; x < CLUSTERS; x++) {
-                    var hammingDot = 4 + VectorUtil.dotProduct(codebook[y], codebook[x]) * -(Math.sqrt(8) / (2 * stddev));
+                    var hammingDot = 4 + (VectorUtil.dotProduct(codebook[y], codebook[x]) - mean) * -(Math.sqrt(8) / (2 * stddev));
                     cachedDotProduct[y * CLUSTERS + x] = hammingDot;
                     cachedWeights[y * CLUSTERS + x] = weightError(hammingDot);
                 }
@@ -178,22 +182,56 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
                 double newLoss = 0;
                 boolean tempSwap = ThreadLocalRandom.current().nextFloat() < temperature;
 
-                if (!tempSwap) {
-                    for (int k = 0; k < CLUSTERS; k++) {
-                        var mappingM = mapping[m];
-                        var mappingN = mapping[n];
-                        var hammingM = Integer.bitCount(mappingM ^ mapping[k]);
-                        var hammingN = Integer.bitCount(mappingN ^ mapping[k]);
-                        var hammingDotM = cachedDotProduct[m * CLUSTERS + k];
-                        var hammingDotN = cachedDotProduct[n * CLUSTERS + k];
-                        var weightDotM = cachedWeights[m * CLUSTERS + k];
-                        var weightDotN = cachedWeights[m * CLUSTERS + k];
-                        oldLoss += weightDotM * (hammingM - hammingDotM) * (hammingM - hammingDotM) + weightDotN * (hammingN - hammingDotN) * (hammingN - hammingDotN);
-                        newLoss += weightDotN * (hammingM - hammingDotN) * (hammingM - hammingDotN) + weightDotM * (hammingN - hammingDotM) * (hammingN - hammingDotM);
+                var delta = 0f;
+                for (int y = 0; y < CLUSTERS; y++) {
+                    if (y == m) {
+                        for (int z = 0; z < CLUSTERS; z++) {
+                            var oldHamming = Integer.bitCount(mapping[y] ^ mapping[z]);
+                            var oldHammingDot = cachedDotProduct[y * CLUSTERS + z];
+                            var oldWeightError = cachedWeights[y * CLUSTERS + z];
+                            oldLoss += oldWeightError * (oldHamming - oldHammingDot) * (oldHamming - oldHammingDot);
+                            int newHamming;
+                            if (z == m) {
+                                newHamming = Integer.bitCount(mapping[n] ^ mapping[n]);
+                            } else if (z == n) {
+                                newHamming = Integer.bitCount(mapping[n] ^ mapping[m]);
+                            } else {
+                                newHamming = Integer.bitCount(mapping[n] ^ mapping[z]);
+                            }
+                            newLoss += oldWeightError * (newHamming - oldHammingDot) * (newHamming - oldHammingDot);
+                        }
+                    } else if (y == n) {
+                        for (int z = 0; z < CLUSTERS; z++) {
+                            var oldHamming = Integer.bitCount(mapping[y] ^ mapping[z]);
+                            var oldHammingDot = cachedDotProduct[y * CLUSTERS + z];
+                            var oldWeightError = cachedWeights[y * CLUSTERS + z];
+                            oldLoss += oldWeightError * (oldHamming - oldHammingDot) * (oldHamming - oldHammingDot);
+                            int newHamming;
+                            if (z == m) {
+                                newHamming = Integer.bitCount(mapping[m] ^ mapping[n]);
+                            } else if (z == n) {
+                                newHamming = Integer.bitCount(mapping[m] ^ mapping[m]);
+                            } else {
+                                newHamming = Integer.bitCount(mapping[m] ^ mapping[z]);
+                            }
+                            newLoss += oldWeightError * (newHamming - oldHammingDot) * (newHamming - oldHammingDot);
+                        }
+                    } else {
+                        var oldHammingM = Integer.bitCount(mapping[m] ^ mapping[y]);
+                        var oldHammingN = Integer.bitCount(mapping[n] ^ mapping[y]);
+                        var oldHammingDotM = cachedDotProduct[m * CLUSTERS + y];
+                        var oldHammingDotN = cachedDotProduct[n * CLUSTERS + y];
+                        var weightErrorM = cachedWeights[m * CLUSTERS + y];
+                        var weightErrorN = cachedWeights[n * CLUSTERS + y];
+                        oldLoss += weightErrorM * (oldHammingM - oldHammingDotM) * (oldHammingM - oldHammingDotM);
+                        oldLoss += weightErrorN * (oldHammingN - oldHammingDotN) * (oldHammingN - oldHammingDotN);
+                        newLoss += weightErrorM * (oldHammingN - oldHammingDotM) * (oldHammingN - oldHammingDotM);
+                        newLoss += weightErrorN * (oldHammingM - oldHammingDotN) * (oldHammingM - oldHammingDotN);
                     }
                 }
 
-                if (newLoss <= oldLoss) {
+                if (newLoss <= oldLoss || tempSwap) {
+                    startingCost = startingCost - oldLoss + newLoss;
                     // perform the swap of m and n
                     var temp = mapping[m];
                     mapping[m] = mapping[n];
