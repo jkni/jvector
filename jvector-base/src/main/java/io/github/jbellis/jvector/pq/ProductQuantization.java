@@ -117,7 +117,7 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
         for (int i = 0; i < CLUSTERS; i++) {
             for (int j = 0; j < CLUSTERS; j++) {
                 var hammingI = Integer.bitCount(mapping[i] ^ mapping[j]);
-                var hammingDotI = 4 + (VectorUtil.dotProduct(codebooks[codebook][i], codebooks[codebook][j]) - mean) * -(Math.sqrt(8) / (2 * stddev));
+                var hammingDotI = 4 + (VectorUtil.squareDistance(codebooks[codebook][i], codebooks[codebook][j]) - mean) * -(Math.sqrt(8) / (2 * stddev));
                 var weightError = weightError(hammingDotI);
                 cost += weightError * (hammingI - hammingDotI) * (hammingI - hammingDotI);
             }
@@ -148,21 +148,22 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
             for (int i = 0; i < CLUSTERS; i++) {
                 mapping[i] = i;
                 for (int k = 0; k < CLUSTERS; k++) {
-                    describeStatistics.addValue(VectorUtil.dotProduct(codebooks[j][i], codebooks[j][k]));
+                    describeStatistics.addValue(VectorUtil.squareDistance(codebooks[j][i], codebooks[j][k]));
                 }
             }
             //System.out.println("Mean " + describeStatistics.getMean() + " stddev " + describeStatistics.getStandardDeviation());
-            //var stddev = describeStatistics.getStandardDeviation();
-            var stddev = .5/M;
-            //var mean = describeStatistics.getMean();
-            var mean = 0;
+            var stddev = describeStatistics.getStandardDeviation();
+            //var stddev = .5/M;
+            var mean = describeStatistics.getMean();
+            //var mean = 0;
             var startingCost = calculateCost(mapping, j, mean, stddev);
+            System.out.println("Starting cost " + startingCost);
             var temperature = 0.7;
             var temperatureDecay = Math.pow(0.9, 1f/500);
             var codebook = codebooks[j];
             for (int y = 0; y < CLUSTERS; y++) {
                 for (int x = 0; x < CLUSTERS; x++) {
-                    var hammingDot = 4 + (VectorUtil.dotProduct(codebook[y], codebook[x]) - mean) * -(Math.sqrt(8) / (2 * stddev));
+                    var hammingDot = 4 + (VectorUtil.squareDistance(codebook[y], codebook[x]) - mean) * -(Math.sqrt(8) / (2 * stddev));
                     cachedDotProduct[y * CLUSTERS + x] = hammingDot;
                     cachedWeights[y * CLUSTERS + x] = weightError(hammingDot);
                 }
@@ -240,7 +241,7 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
                 temperature *= temperatureDecay;
             }
 
-            //System.out.println("Ending error " + calculateError(mapping, j));
+            System.out.println("Ending Error " + startingCost);
             // apply the mapping
             var newCodebook = new float[CLUSTERS][];
             for (int i = 0; i < CLUSTERS; i++) {

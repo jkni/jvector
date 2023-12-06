@@ -90,13 +90,31 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
     }
 
     static class EuclideanDecoder extends CachingDecoder {
+        private final byte[] encodedQuery;
         public EuclideanDecoder(PQVectors cv, float[] query) {
             super(cv, query, VectorSimilarityFunction.EUCLIDEAN);
+            this.encodedQuery = cv.pq.encode(query);
+        }
+
+        @Override
+        public boolean hasFastSimilarity() {
+            return true;
         }
 
         @Override
         public float similarityTo(int node2) {
             return 1 / (1 + decodedSimilarity(cv.get(node2)));
+        }
+
+        @Override
+        public float fastSimilarityTo(int node2) {
+            var max = cv.pq.getSubspaceCount() * 8f;
+            var hd = VectorUtil.hammingDistance(cv.get(node2), encodedQuery);
+            if (hd > 8 * cv.pq.getSubspaceCount() + 1) {
+                return 0;
+            }
+
+            return 1;
         }
     }
 

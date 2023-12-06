@@ -57,7 +57,7 @@ public class GraphSearcher<T> {
     private final NodeQueue candidates;
 
     private final BitSet visited;
-    private final static int APPROXIMATION_THRESHOLD = 75;
+    private final static int APPROXIMATION_THRESHOLD = 5;
 
     /**
      * Creates a new graph searcher.
