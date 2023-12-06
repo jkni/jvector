@@ -150,7 +150,7 @@ public abstract class AbstractLongHeap {
     }
 
     @VisibleForTesting
-    long[] getHeapArray() {
+    public long[] getHeapArray() {
         return heap;
     }
 }

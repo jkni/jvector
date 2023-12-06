@@ -169,7 +169,7 @@ public class Bench {
                     NodeSimilarity.ReRanker<float[]> rr = (j, vectors) -> ds.similarityFunction.compare(queryVector, vectors.get(j));
                     sr = new GraphSearcher.Builder<>(view)
                             .build()
-                            .search(sf, rr, efSearch, Bits.ALL);
+                            .search(sf, rr, efSearch, topK, Bits.ALL);
                 } else {
                     sr = GraphSearcher.search(queryVector, efSearch, exactVv, VectorEncoding.FLOAT32, ds.similarityFunction, index, Bits.ALL);
                 }

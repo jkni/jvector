@@ -25,7 +25,10 @@
 package io.github.jbellis.jvector.graph;
 
 import io.github.jbellis.jvector.util.AbstractLongHeap;
+import io.github.jbellis.jvector.util.BoundedLongHeap;
 import io.github.jbellis.jvector.util.NumericUtils;
+
+import java.util.Arrays;
 
 /**
  * NodeQueue uses a {@link io.github.jbellis.jvector.util.AbstractLongHeap} to store lists of nodes in a graph,
@@ -55,7 +58,7 @@ public class NodeQueue {
     }
 
     private final AbstractLongHeap heap;
-    private final Order order;
+    private Order order;
 
     // Whether the search stopped early because it reached the visited nodes limit
     private boolean incomplete;
@@ -143,6 +146,19 @@ public class NodeQueue {
             ns[i] = new SearchResult.NodeScore(node, sf.similarityTo(node));
         }
         return ns;
+    }
+
+    public NodeQueue rerank(NodeSimilarity.ExactScoreFunction sf) {
+        int size = size();
+        var backingArrayCopy = Arrays.copyOf(heap.getHeapArray(), size + 1);
+        this.clear();
+        var oldOrder = this.order;
+        this.order = Order.MAX_HEAP;
+        for (int i = size - 1; i >= 0; i--) {
+            var node = (int) ~oldOrder.apply(backingArrayCopy[i + 1]);
+            this.push(node, sf.similarityTo(node));
+        }
+        return this;
     }
 
     /** Returns the top element's node id. */

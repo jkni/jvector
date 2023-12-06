@@ -148,6 +148,34 @@ public class GraphSearcher<T> {
         return search(scoreFunction, reRanker, topK, 0.0f, acceptOrds);
     }
 
+    public SearchResult search(NodeSimilarity.ScoreFunction scoreFunction,
+                               NodeSimilarity.ReRanker<T> reRanker,
+                               int topK,
+                               int actualTopK,
+                               Bits acceptOrds)
+    {
+        return search(scoreFunction, reRanker, topK, actualTopK, 0.0f, acceptOrds);
+    }
+
+    public SearchResult search(NodeSimilarity.ScoreFunction scoreFunction,
+                               NodeSimilarity.ReRanker<T> reRanker,
+                               int topK,
+                               int actualTopK,
+                               float threshold,
+                               Bits acceptOrds) {
+        return searchInternal(scoreFunction, reRanker, topK, actualTopK, threshold, view.entryNode(), acceptOrds);
+    }
+
+    SearchResult searchInternal(NodeSimilarity.ScoreFunction scoreFunction,
+                                NodeSimilarity.ReRanker<T> reRanker,
+                                int topK,
+                                float threshold,
+                                int ep,
+                                Bits acceptOrds)
+    {
+        return searchInternal(scoreFunction, reRanker, topK, topK, threshold, ep, acceptOrds);
+    }
+
     /**
      * Add the closest neighbors found to a priority queue (heap). These are returned in
      * proximity order -- the closest neighbor of the topK found, i.e. the one with the highest
@@ -160,6 +188,7 @@ public class GraphSearcher<T> {
     SearchResult searchInternal(NodeSimilarity.ScoreFunction scoreFunction,
                                 NodeSimilarity.ReRanker<T> reRanker,
                                 int topK,
+                                int actualTopK,
                                 float threshold,
                                 int ep,
                                 Bits acceptOrds)
@@ -237,26 +266,31 @@ public class GraphSearcher<T> {
         }
 
         assert resultsQueue.size() <= topK;
-        SearchResult.NodeScore[] nodes = extractScores(scoreFunction, reRanker, resultsQueue, vectorsEncountered);
+        SearchResult.NodeScore[] nodes = extractScores(scoreFunction, reRanker, resultsQueue, vectorsEncountered, actualTopK);
         return new SearchResult(nodes, visited, numVisited);
     }
 
     private static <T> SearchResult.NodeScore[] extractScores(NodeSimilarity.ScoreFunction sf,
                                                               NodeSimilarity.ReRanker<T> reRanker,
                                                               NodeQueue resultsQueue,
-                                                              Map<Integer, T> vectorsEncountered)
+                                                              Map<Integer, T> vectorsEncountered,
+                                                              int actualTopK)
     {
-        SearchResult.NodeScore[] nodes;
+        var extractedResultCount = Math.min(actualTopK, resultsQueue.size());
+        SearchResult.NodeScore[] nodes = new SearchResult.NodeScore[Math.min(resultsQueue.size(), extractedResultCount)];
         if (sf.isExact()) {
-            nodes = new SearchResult.NodeScore[resultsQueue.size()];
             for (int i = nodes.length - 1; i >= 0; i--) {
                 var nScore = resultsQueue.topScore();
                 var n = resultsQueue.pop();
                 nodes[i] = new SearchResult.NodeScore(n, nScore);
             }
         } else {
-            nodes = resultsQueue.nodesCopy(i -> reRanker.similarityTo(i, vectorsEncountered));
-            Arrays.sort(nodes, 0, resultsQueue.size(), Comparator.comparingDouble((SearchResult.NodeScore nodeScore) -> nodeScore.score).reversed());
+            var actualQueue = resultsQueue.rerank(i -> reRanker.similarityTo(i, vectorsEncountered));
+            for (int i = 0; i < nodes.length; i++) {
+                var nScore = actualQueue.topScore();
+                var n = actualQueue.pop();
+                nodes[i] = new SearchResult.NodeScore(n, nScore);
+            }
         }
         return nodes;
     }
