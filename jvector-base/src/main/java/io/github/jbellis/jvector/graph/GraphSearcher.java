@@ -256,7 +256,6 @@ public class GraphSearcher<T> {
             }
         } else {
             nodes = resultsQueue.nodesCopy(i -> reRanker.similarityTo(i, vectorsEncountered));
-            Arrays.sort(nodes, 0, resultsQueue.size(), Comparator.comparingDouble((SearchResult.NodeScore nodeScore) -> nodeScore.score).reversed());
         }
         return nodes;
     }

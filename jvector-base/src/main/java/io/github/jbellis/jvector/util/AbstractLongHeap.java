@@ -83,6 +83,8 @@ public abstract class AbstractLongHeap {
         return heap[1];
     }
 
+
+
     /**
      * Removes and returns the least element of the PriorityQueue in log(size) time.
      *
@@ -150,7 +152,7 @@ public abstract class AbstractLongHeap {
     }
 
     @VisibleForTesting
-    long[] getHeapArray() {
+    public long[] getHeapArray() {
         return heap;
     }
 }

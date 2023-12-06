@@ -27,6 +27,8 @@ package io.github.jbellis.jvector.graph;
 import io.github.jbellis.jvector.util.AbstractLongHeap;
 import io.github.jbellis.jvector.util.NumericUtils;
 
+import java.util.Arrays;
+
 /**
  * NodeQueue uses a {@link io.github.jbellis.jvector.util.AbstractLongHeap} to store lists of nodes in a graph,
  * represented as a node id with an associated score packed together as a sortable long, which is sorted
@@ -112,8 +114,21 @@ public class NodeQueue {
                 (((long) NumericUtils.floatToSortableInt(score)) << 32) | (0xFFFFFFFFL & ~node));
     }
 
+    private long encode(int node, float score, Order order) {
+        return order.apply(
+                (((long) NumericUtils.floatToSortableInt(score)) << 32) | (0xFFFFFFFFL & ~node));
+    }
+
     private float decodeScore(long heapValue) {
         return NumericUtils.sortableIntToFloat((int) (order.apply(heapValue) >> 32));
+    }
+
+    private float decodeScore(long heapValue, Order order) {
+        return NumericUtils.sortableIntToFloat((int) (order.apply(heapValue) >> 32));
+    }
+
+    private int decodeNodeId(long heapValue, Order order) {
+        return (int) ~(order.apply(heapValue));
     }
 
     private int decodeNodeId(long heapValue) {
@@ -138,9 +153,18 @@ public class NodeQueue {
     public SearchResult.NodeScore[] nodesCopy(NodeSimilarity.ExactScoreFunction sf) {
         int size = size();
         SearchResult.NodeScore[] ns = new SearchResult.NodeScore[size];
+        var array = heap.getHeapArray();
         for (int i = 0; i < size; i++) {
-            var node = decodeNodeId(heap.get(i + 1));
-            ns[i] = new SearchResult.NodeScore(node, sf.similarityTo(node));
+            var node = decodeNodeId(array[i + 1]);
+            var score = sf.similarityTo(node);
+            // mutate array entry with new score
+            array[i+1] = encode(node, score, Order.MAX_HEAP);
+        }
+        Arrays.sort(array, 1 , size+1);
+        for (int i = 0; i < size; i++) {
+            var node = decodeNodeId(heap.get(i + 1), Order.MAX_HEAP);
+            var score = decodeScore(heap.get(i + 1), Order.MAX_HEAP);
+            ns[i] = new SearchResult.NodeScore(node, score);
         }
         return ns;
     }
