@@ -65,9 +65,11 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
 
     static class DotProductDecoder extends CachingDecoder {
         private final byte[] encodedQuery;
-        public DotProductDecoder(PQVectors cv, float[] query) {
+        private final int threshold;
+        public DotProductDecoder(PQVectors cv, float[] query, int threshold) {
             super(cv, query, VectorSimilarityFunction.DOT_PRODUCT);
             this.encodedQuery = cv.pq.encode(query);
+            this.threshold = threshold;
         }
 
         @Override
@@ -77,10 +79,12 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
 
         @Override
         public float fastSimilarityTo(int node2) {
-            float reconstructedDotProduct = VectorUtil.hammingDistance(cv.get(node2), encodedQuery) - 4 * cv.pq.getSubspaceCount();
-            var stddev = .5f / cv.pq.getSubspaceCount();
-            reconstructedDotProduct = reconstructedDotProduct * -2 * stddev / (float) Math.sqrt(8);
-            return (1 + reconstructedDotProduct) / 2;
+            var hd = VectorUtil.hammingDistance(cv.get(node2), encodedQuery);
+            if (hd > (threshold)) {
+                return 0;
+            }
+
+            return 1;
         }
 
         @Override
@@ -91,9 +95,11 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
 
     static class EuclideanDecoder extends CachingDecoder {
         private final byte[] encodedQuery;
-        public EuclideanDecoder(PQVectors cv, float[] query) {
+        private final int threshold;
+        public EuclideanDecoder(PQVectors cv, float[] query, int threshold) {
             super(cv, query, VectorSimilarityFunction.EUCLIDEAN);
             this.encodedQuery = cv.pq.encode(query);
+            this.threshold = threshold;
         }
 
         @Override
@@ -108,9 +114,8 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
 
         @Override
         public float fastSimilarityTo(int node2) {
-            var max = cv.pq.getSubspaceCount() * 8f;
             var hd = VectorUtil.hammingDistance(cv.get(node2), encodedQuery);
-            if (hd > 8 * cv.pq.getSubspaceCount() + 1) {
+            if (hd > (threshold)) {
                 return 0;
             }
 

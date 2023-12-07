@@ -100,12 +100,25 @@ public class PQVectors implements CompressedVectors {
     }
 
     @Override
+    public NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction, int threshold) {
+        switch (similarityFunction) {
+            case DOT_PRODUCT:
+                return new PQDecoder.DotProductDecoder(this, q, threshold);
+            case EUCLIDEAN:
+                return new PQDecoder.EuclideanDecoder(this, q, threshold);
+            case COSINE:
+                return new PQDecoder.CosineDecoder(this, q);
+            default:
+                throw new IllegalArgumentException("Unsupported similarity function " + similarityFunction);
+        }
+    }
+
     public NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction) {
         switch (similarityFunction) {
             case DOT_PRODUCT:
-                return new PQDecoder.DotProductDecoder(this, q);
+                return new PQDecoder.DotProductDecoder(this, q, Integer.MAX_VALUE);
             case EUCLIDEAN:
-                return new PQDecoder.EuclideanDecoder(this, q);
+                return new PQDecoder.EuclideanDecoder(this, q, Integer.MAX_VALUE);
             case COSINE:
                 return new PQDecoder.CosineDecoder(this, q);
             default:

@@ -63,6 +63,8 @@ public class Bench {
                                    int efConstruction,
                                    List<Function<DataSet, VectorCompressor<?>>> compressionGrid,
                                    List<Float> efSearchOptions,
+                                   List<Integer> btOptions,
+                                   List<Integer> adOptions,
                                    DataSet ds,
                                    Path testDirectory) throws IOException
     {
@@ -96,18 +98,22 @@ public class Bench {
 
                     int queryRuns = 2;
                     for (float overquery : efSearchOptions) {
-                        start = System.nanoTime();
-                        if (compressor == null) {
-                            // include both in-memory and on-disk search of uncompressed vectors
-                            var pqr = performQueries(ds, floatVectors, cv, onHeapGraph, topK, (int) (topK * overquery), queryRuns);
-                            var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
-                            System.out.format("  Query %s top %d/%.2f recall %.4f in %.2fs after %,d nodes visited%n",
-                                              "(memory)", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
+                        for (int bitThreshold : btOptions) {
+                            for (int approximationDepth : adOptions) {
+                                start = System.nanoTime();
+                                if (compressor == null) {
+                                    // include both in-memory and on-disk search of uncompressed vectors
+                                    var pqr = performQueries(ds, floatVectors, cv, onHeapGraph, topK, (int) (topK * overquery), queryRuns, bitThreshold, approximationDepth);
+                                    var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
+                                    System.out.format("  Query %s top %d/%.2f recall %.4f in %.2fs after %,d nodes visited%n",
+                                            "(memory)", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
+                                }
+                                var pqr = performQueries(ds, floatVectors, cv, onDiskGraph, topK, (int) (topK * overquery), queryRuns, bitThreshold, approximationDepth);
+                                var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
+                                System.out.format("  Query %s top %d/%.2f recall %.4f in %.2fs after %,d nodes visited, %,d approximate similarities, %,d exact similarities, %d HD threshold, %d Exact Depth %n",
+                                        compressor == null ? "(disk) " : "", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited, pqr.approximateSimilarities, pqr.exactSimilarities, bitThreshold, approximationDepth);
+                            }
                         }
-                        var pqr = performQueries(ds, floatVectors, cv, onDiskGraph, topK, (int) (topK * overquery), queryRuns);
-                        var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
-                        System.out.format("  Query %s top %d/%.2f recall %.4f in %.2fs after %,d nodes visited, %,d approximate similarities, %,d exact similarities%n",
-                                          compressor == null ? "(disk) " : "", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited, pqr.approximateSimilarities, pqr.exactSimilarities);
                     }
                 }
             }
@@ -159,7 +165,7 @@ public class Bench {
         return topKCorrect(topK, a, gt);
     }
 
-    private static ResultSummary performQueries(DataSet ds, RandomAccessVectorValues<float[]> exactVv, CompressedVectors cv, GraphIndex<float[]> index, int topK, int efSearch, int queryRuns) {
+    private static ResultSummary performQueries(DataSet ds, RandomAccessVectorValues<float[]> exactVv, CompressedVectors cv, GraphIndex<float[]> index, int topK, int efSearch, int queryRuns, int bitThreshold, int approximationDepth) {
         assert efSearch >= topK;
         LongAdder topKfound = new LongAdder();
         LongAdder nodesVisited = new LongAdder();
@@ -171,11 +177,11 @@ public class Bench {
                 SearchResult sr;
                 if (cv != null) {
                     var view = index.getView();
-                    NodeSimilarity.ApproximateScoreFunction sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
+                    NodeSimilarity.ApproximateScoreFunction sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction, bitThreshold);
                     NodeSimilarity.ReRanker<float[]> rr = (j, vectors) -> ds.similarityFunction.compare(queryVector, vectors.get(j));
                     sr = new GraphSearcher.Builder<>(view)
                             .build()
-                            .search(sf, rr, efSearch, Bits.ALL);
+                            .search(sf, rr, efSearch, approximationDepth, Bits.ALL);
                 } else {
                     sr = GraphSearcher.search(queryVector, efSearch, exactVv, VectorEncoding.FLOAT32, ds.similarityFunction, index, Bits.ALL);
                 }
@@ -196,12 +202,14 @@ public class Bench {
 
         var mGrid = List.of(16); // List.of(8, 12, 16, 24, 32, 48, 64);
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
-        List<Float> efSearchGrid = List.of(1f, 2f);
+        List<Float> efSearchGrid = List.of(2f);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
                 //null, // uncompressed
                 //ds -> BinaryQuantization.compute(ds.getBaseRavv()),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 8, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
+        List<Integer> btGrid = List.of(230, 235, 240, 242, 244, 246, 248, 250, 252, 254, 260);
+        List<Integer> adGrid = List.of(25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100);
 
         // args is list of regexes, possibly needing to be split by whitespace.
         // generate a regex that matches any regex in args, or if args is empty/null, match everything
@@ -212,7 +220,7 @@ public class Bench {
         // 2D grid, built and calculated at runtime
         if (pattern.matcher("2dgrid").find()) {
             var grid2d = DataSetCreator.create2DGrid(4_000_000, 10_000, 100);
-            gridSearch(grid2d, compressionGrid, mGrid, efConstructionGrid, efSearchGrid);
+            gridSearch(grid2d, compressionGrid, mGrid, efConstructionGrid, efSearchGrid, btGrid, adGrid);
             cachedCompressors.clear();
         }
 
@@ -226,7 +234,7 @@ public class Bench {
         for (var nwDatasetName : nwFiles) {
             if (pattern.matcher(nwDatasetName).find()) {
                 DownloadHelper.maybeDownloadFvecs(nwDatasetName);
-                gridSearch(loadNWDataData(nwDatasetName), compressionGrid, mGrid, efConstructionGrid, efSearchGrid);
+                gridSearch(loadNWDataData(nwDatasetName), compressionGrid, mGrid, efConstructionGrid, efSearchGrid, btGrid, adGrid);
                 cachedCompressors.clear();
             }
         }
@@ -246,7 +254,7 @@ public class Bench {
         for (var f : hdf5Files) {
             if (pattern.matcher(f).find()) {
                 DownloadHelper.maybeDownloadHdf5(f);
-                gridSearch(Hdf5Loader.load(f), compressionGrid, mGrid, efConstructionGrid, efSearchGrid);
+                gridSearch(Hdf5Loader.load(f), compressionGrid, mGrid, efConstructionGrid, efSearchGrid, btGrid, adGrid);
                 cachedCompressors.clear();
             }
         }
@@ -269,13 +277,15 @@ public class Bench {
                                    List<Function<DataSet, VectorCompressor<?>>> compressionGrid,
                                    List<Integer> mGrid,
                                    List<Integer> efConstructionGrid,
-                                   List<Float> efSearchFactor) throws IOException
+                                   List<Float> efSearchFactor,
+                                   List<Integer> btOptions,
+                                   List<Integer> adOptions) throws IOException
     {
         var testDirectory = Files.createTempDirectory("BenchGraphDir");
         try {
             for (int M : mGrid) {
                 for (int efC : efConstructionGrid) {
-                    testRecall(M, efC, compressionGrid, efSearchFactor, ds, testDirectory);
+                    testRecall(M, efC, compressionGrid, efSearchFactor, btOptions, adOptions, ds, testDirectory);
                 }
             }
         } finally {

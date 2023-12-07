@@ -33,6 +33,11 @@ public interface CompressedVectors extends Accountable {
      */
     NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction);
 
+    default NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction, int threshold) {
+        return approximateScoreFunctionFor(q, similarityFunction);
+    };
+
+
     /** @return the original size of the vectors, in bytes, before compression */
     int getOriginalSize();
 

@@ -57,7 +57,7 @@ public class GraphSearcher<T> {
     private final NodeQueue candidates;
 
     private final BitSet visited;
-    private final static int APPROXIMATION_THRESHOLD = 5;
+    private final static int APPROXIMATION_THRESHOLD = 60;
 
     /**
      * Creates a new graph searcher.
@@ -127,8 +127,18 @@ public class GraphSearcher<T> {
                                NodeSimilarity.ReRanker<T> reRanker,
                                int topK,
                                float threshold,
+                               int approximationThreshold,
                                Bits acceptOrds) {
-        return searchInternal(scoreFunction, reRanker, topK, threshold, view.entryNode(), acceptOrds);
+        return searchInternal(scoreFunction, reRanker, topK, threshold, approximationThreshold, view.entryNode(), acceptOrds);
+    }
+
+    @Experimental
+    public SearchResult search(NodeSimilarity.ScoreFunction scoreFunction,
+                               NodeSimilarity.ReRanker<T> reRanker,
+                               int topK,
+                               float threshold,
+                               Bits acceptOrds) {
+        return searchInternal(scoreFunction, reRanker, topK, threshold, APPROXIMATION_THRESHOLD, view.entryNode(), acceptOrds);
     }
 
     /**
@@ -147,7 +157,26 @@ public class GraphSearcher<T> {
                                int topK,
                                Bits acceptOrds)
     {
-        return search(scoreFunction, reRanker, topK, 0.0f, acceptOrds);
+        return search(scoreFunction, reRanker, topK, 0.0f, APPROXIMATION_THRESHOLD, acceptOrds);
+    }
+
+    public SearchResult search(NodeSimilarity.ScoreFunction scoreFunction,
+                               NodeSimilarity.ReRanker<T> reRanker,
+                               int topK,
+                               int approximationThreshold,
+                               Bits acceptOrds)
+    {
+        return search(scoreFunction, reRanker, topK, 0.0f, approximationThreshold, acceptOrds);
+    }
+
+    SearchResult searchInternal(NodeSimilarity.ScoreFunction scoreFunction,
+                                NodeSimilarity.ReRanker<T> reRanker,
+                                int topK,
+                                float threshold,
+                                int ep,
+                                Bits acceptOrds)
+    {
+        return searchInternal(scoreFunction, reRanker, topK, threshold, APPROXIMATION_THRESHOLD, ep, acceptOrds);
     }
 
     /**
@@ -163,6 +192,7 @@ public class GraphSearcher<T> {
                                 NodeSimilarity.ReRanker<T> reRanker,
                                 int topK,
                                 float threshold,
+                                int approximationThreshold,
                                 int ep,
                                 Bits acceptOrds)
     {
@@ -231,7 +261,7 @@ public class GraphSearcher<T> {
                 }
                 numVisited++;
                 float friendSimilarity;
-                if (scoreFunction.hasFastSimilarity() && iterations > APPROXIMATION_THRESHOLD) {
+                if (scoreFunction.hasFastSimilarity() && iterations > approximationThreshold) {
                     friendSimilarity = scoreFunction.fastSimilarityTo(friendOrd);
                     approximateSearches++;
                 } else {
@@ -240,7 +270,7 @@ public class GraphSearcher<T> {
                 }
                 scoreTracker.track(friendSimilarity);
                 if (friendSimilarity >= minAcceptedSimilarity) {
-                    if (scoreFunction.hasFastSimilarity() && iterations > APPROXIMATION_THRESHOLD) {
+                    if (scoreFunction.hasFastSimilarity() && iterations > approximationThreshold) {
                         friendSimilarity = scoreFunction.similarityTo(friendOrd);
                         exactSearches++;
                     }

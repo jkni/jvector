@@ -148,7 +148,7 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
             for (int i = 0; i < CLUSTERS; i++) {
                 mapping[i] = i;
                 for (int k = 0; k < CLUSTERS; k++) {
-                    describeStatistics.addValue(VectorUtil.squareDistance(codebooks[j][i], codebooks[j][k]));
+                    describeStatistics.addValue(VectorUtil.dotProduct(codebooks[j][i], codebooks[j][k]));
                 }
             }
             //System.out.println("Mean " + describeStatistics.getMean() + " stddev " + describeStatistics.getStandardDeviation());
@@ -157,13 +157,13 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
             var mean = describeStatistics.getMean();
             //var mean = 0;
             var startingCost = calculateCost(mapping, j, mean, stddev);
-            System.out.println("Starting cost " + startingCost);
+            //System.out.println("Starting cost " + startingCost);
             var temperature = 0.7;
             var temperatureDecay = Math.pow(0.9, 1f/500);
             var codebook = codebooks[j];
             for (int y = 0; y < CLUSTERS; y++) {
                 for (int x = 0; x < CLUSTERS; x++) {
-                    var hammingDot = 4 + (VectorUtil.squareDistance(codebook[y], codebook[x]) - mean) * -(Math.sqrt(8) / (2 * stddev));
+                    var hammingDot = 4 + (VectorUtil.dotProduct(codebook[y], codebook[x]) - mean) * -(Math.sqrt(8) / (2 * stddev));
                     cachedDotProduct[y * CLUSTERS + x] = hammingDot;
                     cachedWeights[y * CLUSTERS + x] = weightError(hammingDot);
                 }
@@ -241,7 +241,7 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
                 temperature *= temperatureDecay;
             }
 
-            System.out.println("Ending Error " + startingCost);
+            //System.out.println("Ending Error " + startingCost);
             // apply the mapping
             var newCodebook = new float[CLUSTERS][];
             for (int i = 0; i < CLUSTERS; i++) {
