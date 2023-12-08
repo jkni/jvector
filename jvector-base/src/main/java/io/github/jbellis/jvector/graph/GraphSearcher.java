@@ -233,7 +233,7 @@ public class GraphSearcher<T> {
 
         // A bound that holds the minimum similarity to the query vector that a candidate vector must
         // have to be considered.
-        float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
+        float minAcceptedSimilarity = -100;
         if (resultsQueue.size() >= topK) {
             minAcceptedSimilarity = resultsQueue.topScore();
         }

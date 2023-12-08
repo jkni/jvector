@@ -208,8 +208,8 @@ public class Bench {
                 //ds -> BinaryQuantization.compute(ds.getBaseRavv()),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 8, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
-        List<Integer> btGrid = List.of(230, 235, 240, 242, 244, 246, 248, 250, 252, 254, 260);
-        List<Integer> adGrid = List.of(25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100);
+        List<Integer> btGrid = List.of(350, 355, 360, 365, 370, 375, 380, 385, 390, 395, 400);
+        List<Integer> adGrid = List.of(25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150);
 
         // args is list of regexes, possibly needing to be split by whitespace.
         // generate a regex that matches any regex in args, or if args is empty/null, match everything

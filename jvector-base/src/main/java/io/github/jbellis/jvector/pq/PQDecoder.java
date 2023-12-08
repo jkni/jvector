@@ -81,10 +81,10 @@ abstract class PQDecoder implements NodeSimilarity.ApproximateScoreFunction {
         public float fastSimilarityTo(int node2) {
             var hd = VectorUtil.hammingDistance(cv.get(node2), encodedQuery);
             if (hd > (threshold)) {
-                return 0;
+                return Float.MIN_VALUE;
             }
 
-            return 1;
+            return Float.MAX_VALUE;
         }
 
         @Override

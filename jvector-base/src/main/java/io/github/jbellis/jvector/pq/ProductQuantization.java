@@ -126,8 +126,8 @@ public class ProductQuantization implements VectorCompressor<byte[]> {
     }
 
     private double weightError(double mappedDotProduct) {
-        return Math.pow(0.5, mappedDotProduct);
-        //return 1d;
+        //return Math.pow(0.5, mappedDotProduct);
+        return 0.3d;
     }
 
     private void anneal() {
