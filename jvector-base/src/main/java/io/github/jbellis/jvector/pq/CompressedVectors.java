@@ -19,6 +19,7 @@ package io.github.jbellis.jvector.pq;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -31,7 +32,7 @@ public interface CompressedVectors extends Accountable {
      * @return a ScoreFunction suitable for performing search against the compressed vectors,
      * potentially without decompression them first
      */
-    NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction);
+    NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(VectorFloat<?> q, VectorSimilarityFunction similarityFunction);
 
     /** @return the original size of the vectors, in bytes, before compression */
     int getOriginalSize();

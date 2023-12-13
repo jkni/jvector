@@ -25,17 +25,20 @@
 package io.github.jbellis.jvector.graph;
 
 import io.github.jbellis.jvector.util.ArrayUtil;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
-public class MockVectorValues extends AbstractMockVectorValues<float[]> {
-    private final float[] denseScratch;
+public class MockVectorValues extends AbstractMockVectorValues<VectorFloat<?>> {
+    private final VectorFloat<?> scratch;
 
-    public static MockVectorValues fromValues(float[][] values) {
-        return new MockVectorValues(values[0].length, values);
+    public static MockVectorValues fromValues(VectorFloat<?>[] values) {
+        return new MockVectorValues(values[0].length(), values);
     }
 
-    MockVectorValues(int dimension, float[][] denseValues) {
+    MockVectorValues(int dimension, VectorFloat<?>[] denseValues) {
         super(dimension, denseValues);
-        this.denseScratch = new float[dimension];
+        this.scratch = vectorTypeSupport.createFloatType(dimension);
     }
 
     @Override
@@ -51,11 +54,13 @@ public class MockVectorValues extends AbstractMockVectorValues<float[]> {
     }
 
     @Override
-    public float[] vectorValue(int targetOrd) {
-        float[] original = super.vectorValue(targetOrd);
+    public VectorFloat<?> vectorValue(int targetOrd) {
+        VectorFloat<?> original = super.vectorValue(targetOrd);
         // present a single vector reference to callers like the disk-backed RAVV implmentations,
         // to catch cases where they are not making a copy
-        System.arraycopy(original, 0, denseScratch, 0, dimension);
-        return denseScratch;
+           for (int i = 0; i < dimension; i++) {
+                scratch.set(i, original.get(i));
+            }
+        return scratch;
     }
 }

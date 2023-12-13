@@ -46,6 +46,7 @@
     <modules>
         <module>jvector-base</module>
         <module>jvector-twenty</module>
+        <module>jvector-native</module>
         <module>jvector-tests</module>
         <module>jvector-multirelease</module>
         <module>jvector-examples</module>
@@ -118,6 +119,7 @@
                             <skippedModules>jvector-examples,jvector-tests</skippedModules>
                             <additionalJOptions>
                                 <additionalJOption>--add-modules=jdk.incubator.vector</additionalJOption>
+                                <additionalJOption>--enable-preview</additionalJOption>
                             </additionalJOptions>
                             <release>20</release>
                         </configuration>

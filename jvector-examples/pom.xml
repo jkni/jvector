@@ -143,6 +143,12 @@
                     <version>${project.version}</version>
                     <scope>compile</scope>
                 </dependency>
+                <dependency>
+                    <groupId>io.github.jbellis</groupId>
+                    <artifactId>jvector-native</artifactId>
+                    <version>${project.version}</version>
+                    <scope>compile</scope>
+                </dependency>
             </dependencies>
             <build>
                 <plugins>
@@ -171,6 +177,7 @@
                                     <arguments>
                                         <argument>-classpath</argument>
                                         <classpath/>
+                                        <argument>--enable-preview</argument>
                                         <argument>--add-modules=jdk.incubator.vector</argument>
                                         <argument>-Xmx12G</argument>
                                         <argument>-ea</argument>

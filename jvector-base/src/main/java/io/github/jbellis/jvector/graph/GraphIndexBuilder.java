@@ -25,6 +25,10 @@ import io.github.jbellis.jvector.util.PoolingSupport;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorUtil;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
+import io.github.jbellis.jvector.vector.types.VectorByte;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -47,6 +51,7 @@ import static io.github.jbellis.jvector.util.DocIdSetIterator.NO_MORE_DOCS;
  * @param <T> the type of vector
  */
 public class GraphIndexBuilder<T> {
+    private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     private final int beamWidth;
     private final PoolingSupport<NodeArray> naturalScratch;
     private final PoolingSupport<NodeArray> concurrentScratch;
@@ -524,10 +529,10 @@ public class GraphIndexBuilder<T> {
              var vc = vectorsCopy.get())
         {
             // compute centroid
-            var centroid = new float[dimension];
+            var centroid = vectorTypeSupport.createFloatType(dimension);
             for (var it = graph.getNodes(); it.hasNext(); ) {
                 var node = it.nextInt();
-                VectorUtil.addInPlace(centroid, (float[]) vc.get().vectorValue(node));
+                VectorUtil.addInPlace(centroid, (VectorFloat<?>) (vc.get().vectorValue(node)));
             }
             VectorUtil.divInPlace(centroid, graph.size());
 
@@ -577,9 +582,9 @@ public class GraphIndexBuilder<T> {
             VectorEncoding encoding, VectorSimilarityFunction similarityFunction, T v1, T v2) {
         switch (encoding) {
             case BYTE:
-                return similarityFunction.compare((byte[]) v1, (byte[]) v2);
+                return similarityFunction.compare((VectorByte<?>) v1, (VectorByte<?>) v2);
             case FLOAT32:
-                return similarityFunction.compare((float[]) v1, (float[]) v2);
+                return similarityFunction.compare((VectorFloat<?>) v1, (VectorFloat<?>) v2);
             default:
                 throw new IllegalArgumentException();
         }

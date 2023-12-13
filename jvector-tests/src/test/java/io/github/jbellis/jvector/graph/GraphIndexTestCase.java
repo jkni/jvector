@@ -33,6 +33,12 @@ import io.github.jbellis.jvector.util.BoundedLongHeap;
 import io.github.jbellis.jvector.util.FixedBitSet;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.VectorUtil;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
+import io.github.jbellis.jvector.vector.types.VectorByte;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
+
 import org.junit.Test;
 
 import java.util.*;
@@ -45,8 +51,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 @ThreadLeakScope(ThreadLeakScope.Scope.NONE)
 public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
-
     VectorSimilarityFunction similarityFunction;
+    protected static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
 
     abstract VectorEncoding getVectorEncoding();
 
@@ -54,7 +60,7 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
 
     abstract AbstractMockVectorValues<T> vectorValues(int size, int dimension);
 
-    abstract AbstractMockVectorValues<T> vectorValues(float[][] values);
+    abstract AbstractMockVectorValues<T> vectorValues(VectorFloat<?>[] values);
 
     abstract RandomAccessVectorValues<T> circularVectorValues(int nDoc);
 
@@ -462,7 +468,7 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
     /**
      * Returns vectors evenly distributed around the upper unit semicircle.
      */
-    static class CircularByteVectorValues implements RandomAccessVectorValues<byte[]> {
+    static class CircularByteVectorValues implements RandomAccessVectorValues<VectorByte<?>> {
         private final int size;
 
         CircularByteVectorValues(int size) {
@@ -485,13 +491,13 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
         }
 
         @Override
-        public byte[] vectorValue(int ord) {
+        public VectorByte<?> vectorValue(int ord) {
             float[] value = unitVector2d(ord / (double) size);
             byte[] bValue = new byte[value.length];
             for (int i = 0; i < value.length; i++) {
                 bValue[i] = (byte) (value[i] * 127);
             }
-            return bValue;
+            return bValue; //TODO: turn byte array into VectorByte
         }
 
         @Override

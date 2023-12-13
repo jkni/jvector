@@ -29,6 +29,7 @@ import io.github.jbellis.jvector.pq.CompressedVectors;
 import io.github.jbellis.jvector.pq.ProductQuantization;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -52,7 +53,7 @@ public class GraphBuildBench {
 
         public Parameters() {
             this.ds = Hdf5Loader.load("hdf5/glove-100-angular.hdf5");
-            this.ravv = new ListRandomAccessVectorValues(ds.baseVectors, ds.baseVectors.get(0).length);
+            this.ravv = new ListRandomAccessVectorValues(ds.baseVectors, ds.baseVectors.get(0).length());
         }
     }
 
@@ -61,11 +62,10 @@ public class GraphBuildBench {
     @OutputTimeUnit(TimeUnit.SECONDS)
     public void testGraphBuild(Blackhole bh, Parameters p) {
         long start = System.nanoTime();
-        GraphIndexBuilder<float[]> graphIndexBuilder =  new GraphIndexBuilder<>(p.ravv, VectorEncoding.FLOAT32, p.ds.similarityFunction, 8, 60, 1.2f, 1.4f);
+        GraphIndexBuilder<VectorFloat<?>> graphIndexBuilder =  new GraphIndexBuilder<>(p.ravv, VectorEncoding.FLOAT32, p.ds.similarityFunction, 8, 60, 1.2f, 1.4f);
         var onHeapGraph = graphIndexBuilder.build();
         var avgShortEdges = onHeapGraph.getAverageShortEdges();
         System.out.format("Build M=%d ef=%d in %.2fs with %.2f short edges%n",
                 32, 600, (System.nanoTime() - start) / 1_000_000_000.0, avgShortEdges);
     }
 }
-

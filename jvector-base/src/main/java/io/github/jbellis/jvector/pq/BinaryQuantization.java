@@ -21,11 +21,15 @@ import io.github.jbellis.jvector.disk.RandomAccessReader;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.util.PoolingSupport;
 import io.github.jbellis.jvector.vector.VectorUtil;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -38,17 +42,18 @@ import static java.lang.Math.min;
  * and similarity is computed with a simple Hamming distance.
  */
 public class BinaryQuantization implements VectorCompressor<long[]> {
-    private final float[] globalCentroid;
+    private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
+    private final VectorFloat<?> globalCentroid;
 
-    public BinaryQuantization(float[] globalCentroid) {
+    public BinaryQuantization(VectorFloat<?> globalCentroid) {
         this.globalCentroid = globalCentroid;
     }
 
-    public static BinaryQuantization compute(RandomAccessVectorValues<float[]> ravv) {
+    public static BinaryQuantization compute(RandomAccessVectorValues<VectorFloat<?>> ravv) {
         return compute(ravv, ForkJoinPool.commonPool());
     }
 
-    public static BinaryQuantization compute(RandomAccessVectorValues<float[]> ravv, ForkJoinPool parallelExecutor) {
+    public static BinaryQuantization compute(RandomAccessVectorValues<VectorFloat<?>> ravv, ForkJoinPool parallelExecutor) {
         // limit the number of vectors we train on
         var P = min(1.0f, ProductQuantization.MAX_PQ_TRAINING_SET_SIZE / (float) ravv.size());
         var ravvCopy = ravv.isValueShared() ? PoolingSupport.newThreadBased(ravv::copy) : PoolingSupport.newNoPooling(ravv);
@@ -57,15 +62,15 @@ public class BinaryQuantization implements VectorCompressor<long[]> {
                 .mapToObj(targetOrd -> {
                     try (var pooledRavv = ravvCopy.get()) {
                         var localRavv = pooledRavv.get();
-                        float[] v = localRavv.vectorValue(targetOrd);
-                        return localRavv.isValueShared() ? Arrays.copyOf(v, v.length) : v;
+                        VectorFloat<?> v = localRavv.vectorValue(targetOrd);
+                        return localRavv.isValueShared() ? v.copy() : v;
                     }
                 })
                 .collect(Collectors.toList()))
                 .join();
 
         // compute the centroid of the training set
-        float[] globalCentroid = KMeansPlusPlusClusterer.centroidOf(vectors);
+        VectorFloat<?> globalCentroid = KMeansPlusPlusClusterer.centroidOf(vectors);
         return new BinaryQuantization(globalCentroid);
     }
 
@@ -75,7 +80,7 @@ public class BinaryQuantization implements VectorCompressor<long[]> {
     }
 
     @Override
-    public long[][] encodeAll(List<float[]> vectors, ForkJoinPool simdExecutor) {
+    public long[][] encodeAll(List<VectorFloat<?>> vectors, ForkJoinPool simdExecutor) {
         return simdExecutor.submit(() -> vectors.stream().parallel().map(this::encode).toArray(long[][]::new)).join();
     }
 
@@ -85,19 +90,19 @@ public class BinaryQuantization implements VectorCompressor<long[]> {
      * @return one bit per original f32
      */
     @Override
-    public long[] encode(float[] v) {
+    public long[] encode(VectorFloat<?> v) {
         var centered = VectorUtil.sub(v, globalCentroid);
 
-        int M = (int) Math.ceil(centered.length / 64.0);
+        int M = (int) Math.ceil(centered.length() / 64.0);
         long[] encoded = new long[M];
         for (int i = 0; i < M; i++) {
             long bits = 0;
             for (int j = 0; j < 64; j++) {
                 int idx = i * 64 + j;
-                if (idx >= centered.length) {
+                if (idx >= centered.length()) {
                     break;
                 }
-                if (centered[idx] > 0) {
+                if (centered.get(idx) > 0) {
                     bits |= 1L << j;
                 }
             }
@@ -108,18 +113,17 @@ public class BinaryQuantization implements VectorCompressor<long[]> {
 
     @Override
     public void write(DataOutput out) throws IOException {
-        out.writeInt(globalCentroid.length);
-        Io.writeFloats(out, globalCentroid);
+        out.writeInt(globalCentroid.length());
+        vectorTypeSupport.writeFloatType(out, globalCentroid);
     }
 
     public int getOriginalDimension() {
-        return globalCentroid.length;
+        return globalCentroid.length();
     }
 
     public static BinaryQuantization load(RandomAccessReader in) throws IOException {
         int length = in.readInt();
-        var centroid = new float[length];
-        in.readFully(centroid);
+        var centroid = vectorTypeSupport.readFloatType(in, length);
         return new BinaryQuantization(centroid);
     }
 
@@ -128,12 +132,12 @@ public class BinaryQuantization implements VectorCompressor<long[]> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         BinaryQuantization that = (BinaryQuantization) o;
-        return Arrays.equals(globalCentroid, that.globalCentroid);
+        return Objects.equals(globalCentroid, that.globalCentroid);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(globalCentroid);
+        return Objects.hashCode(globalCentroid);
     }
 
     @Override

@@ -82,7 +82,7 @@
                         </goals>
                         <configuration>
                             <argLine>
-                                --add-modules=jdk.incubator.vector
+                                --add-modules jdk.incubator.vector
                                 --enable-preview
                             </argLine>
                             <skip>${skipJdk20Tests}</skip>
@@ -145,6 +145,12 @@
                 <dependency>
                     <groupId>io.github.jbellis</groupId>
                     <artifactId>jvector-twenty</artifactId>
+                    <version>${project.version}</version>
+                    <scope>compile</scope>
+                </dependency>
+                <dependency>
+                    <groupId>io.github.jbellis</groupId>
+                    <artifactId>jvector-native</artifactId>
                     <version>${project.version}</version>
                     <scope>compile</scope>
                 </dependency>

@@ -24,7 +24,11 @@
 
 package io.github.jbellis.jvector.graph;
 
+import io.github.jbellis.jvector.vector.VectorizationProvider;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
+
 abstract class AbstractMockVectorValues<T> implements RandomAccessVectorValues<T> {
+    protected static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     protected final int dimension;
     protected final T[] denseValues;
 

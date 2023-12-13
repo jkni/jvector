@@ -33,6 +33,8 @@ import io.github.jbellis.jvector.util.GrowableLongHeap;
 import io.github.jbellis.jvector.util.SparseFixedBitSet;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.types.VectorByte;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -77,9 +79,9 @@ public class GraphSearcher<T> {
         NodeSimilarity.ExactScoreFunction scoreFunction = i -> {
             switch (vectorEncoding) {
                 case BYTE:
-                    return similarityFunction.compare((byte[]) targetVector, (byte[]) vectors.vectorValue(i));
+                    return similarityFunction.compare((VectorByte<?>) targetVector, (VectorByte<?>) vectors.vectorValue(i));
                 case FLOAT32:
-                    return similarityFunction.compare((float[]) targetVector, (float[]) vectors.vectorValue(i));
+                    return similarityFunction.compare((VectorFloat<?>) targetVector, (VectorFloat<?>) vectors.vectorValue(i));
                 default:
                     throw new RuntimeException("Unsupported vector encoding: " + vectorEncoding);
             }

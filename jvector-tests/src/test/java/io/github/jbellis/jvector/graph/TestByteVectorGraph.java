@@ -28,12 +28,15 @@ import com.carrotsearch.randomizedtesting.RandomizedTest;
 import io.github.jbellis.jvector.TestUtil;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.types.VectorByte;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+
 import org.junit.Before;
 
 /**
  * Tests KNN graphs
  */
-public class TestByteVectorGraph extends GraphIndexTestCase<byte[]> {
+public class TestByteVectorGraph extends GraphIndexTestCase<VectorByte<?>> {
 
     @Before
     public void setup() {
@@ -46,12 +49,12 @@ public class TestByteVectorGraph extends GraphIndexTestCase<byte[]> {
     }
 
     @Override
-    byte[] randomVector(int dim) {
+    VectorByte<?> randomVector(int dim) {
         return TestUtil.randomVector8(getRandom(), dim);
     }
 
     @Override
-    AbstractMockVectorValues<byte[]> vectorValues(int size, int dimension) {
+    AbstractMockVectorValues<VectorByte<?>> vectorValues(int size, int dimension) {
         return MockByteVectorValues.fromValues(createRandomByteVectors(size, dimension, getRandom()));
     }
 
@@ -60,7 +63,7 @@ public class TestByteVectorGraph extends GraphIndexTestCase<byte[]> {
     }
 
     @Override
-    AbstractMockVectorValues<byte[]> vectorValues(float[][] values) {
+    AbstractMockVectorValues<VectorByte<?>> vectorValues(VectorFloat<?>[] values) {
         byte[][] bValues = new byte[values.length][];
         // The case when all floats fit within a byte already.
         boolean scaleSimple = fitsInByte(values[0][0]);
@@ -81,12 +84,12 @@ public class TestByteVectorGraph extends GraphIndexTestCase<byte[]> {
     }
 
     @Override
-    RandomAccessVectorValues<byte[]> circularVectorValues(int nDoc) {
+    RandomAccessVectorValues<VectorByte<?>> circularVectorValues(int nDoc) {
         return new CircularByteVectorValues(nDoc);
     }
 
     @Override
-    byte[] getTargetVector() {
+    VectorByte<?> getTargetVector() {
         return new byte[]{1, 0};
     }
 }

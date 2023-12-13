@@ -29,6 +29,8 @@ import io.github.jbellis.jvector.TestUtil;
 import io.github.jbellis.jvector.util.FixedBitSet;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+
 import org.junit.Before;
 
 import java.util.Arrays;
@@ -39,7 +41,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Tests KNN graphs
  */
-public class TestFloatVectorGraph extends GraphIndexTestCase<float[]> {
+public class TestFloatVectorGraph extends GraphIndexTestCase<VectorFloat<?>> {
 
     @Before
     public void setup() {
@@ -52,27 +54,27 @@ public class TestFloatVectorGraph extends GraphIndexTestCase<float[]> {
     }
 
     @Override
-    float[] randomVector(int dim) {
+    VectorFloat<?> randomVector(int dim) {
         return TestUtil.randomVector(getRandom(), dim);
     }
 
     @Override
-    AbstractMockVectorValues<float[]> vectorValues(int size, int dimension) {
+    AbstractMockVectorValues<VectorFloat<?>> vectorValues(int size, int dimension) {
         return MockVectorValues.fromValues(createRandomFloatVectors(size, dimension, getRandom()));
     }
 
     @Override
-    AbstractMockVectorValues<float[]> vectorValues(float[][] values) {
+    AbstractMockVectorValues<VectorFloat<?>> vectorValues(VectorFloat<?>[] values) {
         return MockVectorValues.fromValues(values);
     }
 
     @Override
-    RandomAccessVectorValues<float[]> circularVectorValues(int nDoc) {
+    RandomAccessVectorValues<VectorFloat<?>> circularVectorValues(int nDoc) {
         return new CircularFloatVectorValues(nDoc);
     }
 
     @Override
-    float[] getTargetVector() {
+    VectorFloat<?> getTargetVector() {
         return new float[]{1f, 0f};
     }
 

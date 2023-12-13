@@ -24,6 +24,7 @@ import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.vector.VectorUtil;
 import io.github.jbellis.jvector.util.Bits;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
 
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
@@ -94,8 +95,8 @@ public class TestUtil {
         }
     }
 
-    public static float[] randomVector(Random random, int dim) {
-      float[] vec = new float[dim];
+    public static VectorFloat<?> randomVector(Random random, int dim) {
+      VectorFloat<?> vec = vector
       for (int i = 0; i < dim; i++) {
         vec[i] = random.nextFloat();
         if (random.nextBoolean()) {

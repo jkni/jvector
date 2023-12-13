@@ -27,6 +27,9 @@ package io.github.jbellis.jvector.vector;
 import java.util.Arrays;
 import java.util.List;
 
+import io.github.jbellis.jvector.vector.types.VectorByte;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 
@@ -40,23 +43,23 @@ public final class VectorUtil {
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
-  public static float dotProduct(float[] a, float[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+  public static float dotProduct(VectorFloat<?> a, VectorFloat<?> b) {
+    if (a.length() != b.length()) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length() + "!=" + b.length());
     }
     float r = impl.dotProduct(a, b);
     assert Float.isFinite(r);
     return r;
   }
 
-  public static float dotProduct(float[] a, int aoffset, float[] b, int boffset, int length) {
+  public static float dotProduct(VectorFloat<?> a, int aoffset, VectorFloat<?> b, int boffset, int length) {
     //This check impacts FLOPS
     /*if ( length > Math.min(a.length - aoffset, b.length - boffset) ) {
       throw new IllegalArgumentException("length must be less than the vectors remaining space at the given offsets: a(" +
               (a.length - aoffset) + "), b(" + (b.length - boffset) + "), length(" + length + ")");
     }*/
     float r = impl.dotProduct(a, aoffset, b, boffset, length);
-    assert Float.isFinite(r) : String.format("dotProduct(%s, %s) = %s", Arrays.toString(a), Arrays.toString(b), r);
+    assert Float.isFinite(r) : String.format("dotProduct(%s, %s) = %s", a, b, r);
     return r;
   }
 
@@ -65,19 +68,19 @@ public final class VectorUtil {
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
-  public static float cosine(float[] a, float[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+  public static float cosine(VectorFloat<?> a, VectorFloat<?> b) {
+    if (a.length() != b.length()) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length() + "!=" + b.length());
     }
     float r = impl.cosine(a, b);
-    assert Float.isFinite(r) : String.format("cosine(%s, %s) = %s", Arrays.toString(a), Arrays.toString(b), r);
+    assert Float.isFinite(r) : String.format("cosine(%s, %s) = %s", a, b, r);
     return r;
   }
 
   /** Returns the cosine similarity between the two vectors. */
-  public static float cosine(byte[] a, byte[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+  public static float cosine(VectorByte<?> a, VectorByte<?> b) {
+    if (a.length() != b.length()) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length() + "!=" + b.length());
     }
     return impl.cosine(a, b);
   }
@@ -87,28 +90,28 @@ public final class VectorUtil {
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
-  public static float squareDistance(float[] a, float[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+  public static float squareDistance(VectorFloat<?> a, VectorFloat<?> b) {
+    if (a.length() != b.length()) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length() + "!=" + b.length());
     }
     float r = impl.squareDistance(a, b);
-    assert Float.isFinite(r) : String.format("squareDistance(%s, %s) = %s", Arrays.toString(a), Arrays.toString(b), r);
+    assert Float.isFinite(r) : String.format("squareDistance(%s, %s) = %s", a, b, r);
     return r;
   }
 
   /**
    * Returns the sum of squared differences of the two vectors, or subvectors, of the given length.
    */
-  public static float squareDistance(float[] a, int aoffset, float[] b, int boffset, int length) {
+  public static float squareDistance(VectorFloat<?> a, int aoffset, VectorFloat<?> b, int boffset, int length) {
     float r = impl.squareDistance(a, aoffset, b, boffset, length);
     assert Float.isFinite(r);
     return r;
   }
 
   /** Returns the sum of squared differences of the two vectors. */
-  public static int squareDistance(byte[] a, byte[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+  public static int squareDistance(VectorByte<?> a, VectorByte<?> b) {
+    if (a.length() != b.length()) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length() + "!=" + b.length());
     }
     return impl.squareDistance(a, b);
   }
@@ -119,7 +122,7 @@ public final class VectorUtil {
    *
    * @return the input array after normalization
    */
-  public static float[] l2normalize(float[] v) {
+  public static VectorFloat<?> l2normalize(VectorFloat<?> v) {
     l2normalize(v, true);
     return v;
   }
@@ -132,10 +135,11 @@ public final class VectorUtil {
    * @return the input array after normalization
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
-  public static float[] l2normalize(float[] v, boolean throwOnZero) {
+  public static VectorFloat<?> l2normalize(VectorFloat<?> v, boolean throwOnZero) {
     double squareSum = 0.0f;
-    int dim = v.length;
-    for (float x : v) {
+    int dim = v.length();
+    for (int i = 0; i < dim; i++) {
+      float x = v.get(i);
       squareSum += x * x;
     }
     if (squareSum == 0) {
@@ -147,7 +151,7 @@ public final class VectorUtil {
     }
     double length = Math.sqrt(squareSum);
     for (int i = 0; i < dim; i++) {
-      v[i] /= length;
+      v.set(i, (float)(v.get(i) / length));
     }
     return v;
   }
@@ -171,9 +175,9 @@ public final class VectorUtil {
    * @param b bytes containing another vector, of the same dimension
    * @return the value of the dot product of the two vectors
    */
-  public static int dotProduct(byte[] a, byte[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+  public static int dotProduct(VectorByte<?> a, VectorByte<?> b) {
+    if (a.length() != b.length()) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length() + "!=" + b.length());
     }
     return impl.dotProduct(a, b);
   }
@@ -185,9 +189,9 @@ public final class VectorUtil {
    * @param b bytes containing another vector, of the same dimension
    * @return the value of the similarity function applied to the two vectors
    */
-  public static float dotProductScore(byte[] a, byte[] b) {
+  public static float dotProductScore(VectorByte<?> a, VectorByte<?> b) {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-    float denom = (float) (a.length * (1 << 15));
+    float denom = (float) (a.length() * (1 << 15));
     return 0.5f + dotProduct(a, b) / denom;
   }
 
@@ -207,7 +211,7 @@ public final class VectorUtil {
     return v;
   }
 
-  public static float[] sum(List<float[]> vectors) {
+  public static VectorFloat<?> sum(List<VectorFloat<?>> vectors) {
     if (vectors.isEmpty()) {
       throw new IllegalArgumentException("Input list cannot be empty");
     }
@@ -215,27 +219,26 @@ public final class VectorUtil {
     return impl.sum(vectors);
   }
 
-  public static float sum(float[] vector) {
+  public static float sum(VectorFloat<?> vector) {
     return impl.sum(vector);
   }
 
-  public static void divInPlace(float[] vector, float divisor) {
+  public static void divInPlace(VectorFloat<?> vector, float divisor) {
     impl.divInPlace(vector, divisor);
   }
 
-  public static void addInPlace(float[] v1, float[] v2) {
+  public static void addInPlace(VectorFloat<?> v1, VectorFloat<?> v2) {
     impl.addInPlace(v1, v2);
   }
 
-  public static void subInPlace(float[] v1, float[] v2) {
+  public static void subInPlace(VectorFloat<?> v1, VectorFloat<?> v2) {
     impl.subInPlace(v1, v2);
   }
 
-
-  public static float[] sub(float[] lhs, float[] rhs) {
+  public static VectorFloat<?> sub(VectorFloat<?> lhs, VectorFloat<?> rhs) {
     return impl.sub(lhs, rhs);
   }
-  public static float assembleAndSum(float[] data, int dataBase, byte[] dataOffsets) {
+  public static float assembleAndSum(VectorFloat<?> data, int dataBase, VectorByte<?> dataOffsets) {
     return impl.assembleAndSum(data, dataBase, dataOffsets);
   }
 

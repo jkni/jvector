@@ -25,17 +25,18 @@
 package io.github.jbellis.jvector.graph;
 
 import io.github.jbellis.jvector.util.ArrayUtil;
+import io.github.jbellis.jvector.vector.types.VectorByte;
 
-class MockByteVectorValues extends AbstractMockVectorValues<byte[]> {
-    private final byte[] denseScratch;
+class MockByteVectorValues extends AbstractMockVectorValues<VectorByte<?>> {
+    private final VectorByte<?> denseScratch;
 
-    static MockByteVectorValues fromValues(byte[][] values) {
-        return new MockByteVectorValues(values[0].length, values);
+    static MockByteVectorValues fromValues(VectorByte<?>[] values) {
+        return new MockByteVectorValues(values[0].length(), values);
     }
 
-    MockByteVectorValues(int dimension, byte[][] denseValues) {
+    MockByteVectorValues(int dimension, VectorByte<?>[] denseValues) {
         super(dimension, denseValues);
-        denseScratch = new byte[dimension];
+        denseScratch = vectorTypeSupport.createByteType(dimension);
     }
 
     @Override
@@ -51,11 +52,13 @@ class MockByteVectorValues extends AbstractMockVectorValues<byte[]> {
     }
 
     @Override
-    public byte[] vectorValue(int targetOrd) {
-        byte[] original = super.vectorValue(targetOrd);
+    public VectorByte<?> vectorValue(int targetOrd) {
+        VectorByte<?> original = super.vectorValue(targetOrd);
         // present a single vector reference to callers like the disk-backed RAVV implmentations,
         // to catch cases where they are not making a copy
-        System.arraycopy(original, 0, denseScratch, 0, dimension);
+        for (int i = 0; i < dimension; i++) {
+            denseScratch.set(i, original.get(i));
+        }
         return denseScratch;
     }
 }

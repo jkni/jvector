@@ -22,6 +22,9 @@ import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.util.Bits;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -34,6 +37,7 @@ import java.util.stream.IntStream;
 
 public class OnDiskGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accountable
 {
+    private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     private final ReaderSupplier readerSupplier;
     private final long neighborsOffset;
     private final int size;
@@ -110,10 +114,8 @@ public class OnDiskGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accoun
                 long offset = neighborsOffset +
                         node * (Integer.BYTES + (long) dimension * Float.BYTES + (long) Integer.BYTES * (maxDegree + 1)) // earlier entries
                         + Integer.BYTES; // skip the ID
-                float[] vector = new float[dimension];
                 reader.seek(offset);
-                reader.readFully(vector);
-                return (T) vector;
+                return (T) vectorTypeSupport.readFloatType(reader, dimension);
             }
             catch (IOException e) {
                 throw new UncheckedIOException(e);
@@ -240,7 +242,7 @@ public class OnDiskGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accoun
                 }
 
                 out.writeInt(newOrdinal); // unnecessary, but a reasonable sanity check
-                Io.writeFloats(out, (float[]) vectors.vectorValue(originalOrdinal));
+                vectorTypeSupport.writeFloatType(out, (VectorFloat<?>) vectors.vectorValue(originalOrdinal));
 
                 var neighbors = view.getNeighborsIterator(originalOrdinal);
                 out.writeInt(neighbors.size());

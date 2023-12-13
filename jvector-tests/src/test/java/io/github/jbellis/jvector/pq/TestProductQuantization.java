@@ -19,9 +19,18 @@ package io.github.jbellis.jvector.pq;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
+import io.github.jbellis.jvector.vector.ArrayVectorProvider;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
+
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -29,6 +38,7 @@ import static org.junit.Assert.assertArrayEquals;
 
 @ThreadLeakScope(ThreadLeakScope.Scope.NONE)
 public class TestProductQuantization extends RandomizedTest {
+    private static final VectorTypeSupport typeProvider = VectorizationProvider.getInstance().getVectorTypeSupport();
     @Test
     public void testPerfectReconstruction() {
         var vectors = IntStream.range(0,ProductQuantization.CLUSTERS).mapToObj(
