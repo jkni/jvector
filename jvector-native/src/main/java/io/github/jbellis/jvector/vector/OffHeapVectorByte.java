@@ -1,7 +1,9 @@
 package io.github.jbellis.jvector.vector;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -10,19 +12,27 @@ import java.util.Objects;
 import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorType;
 
-public class OffHeapVectorByte implements VectorByte<MemorySegment>
-{
-    private final ByteBuffer buffer;
+public class OffHeapVectorByte implements VectorByte<MemorySegment> {
     private final MemorySegment segment;
+    private static final ThreadLocal<SegmentAllocator> allocator =
+            ThreadLocal.withInitial(() -> SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64)));
+    private final int length;
 
     OffHeapVectorByte(int length) {
-        this.buffer = ByteBuffer.allocateDirect(length).order(ByteOrder.LITTLE_ENDIAN);
-        this.segment = MemorySegment.ofBuffer(buffer);
+        MemorySegment segment;
+        try {
+            segment = allocator.get().allocate(length, 64);
+        } catch (IndexOutOfBoundsException e) {
+            allocator.set(SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64)));
+            segment = allocator.get().allocate(length, 64);
+        }
+        this.segment = segment;
+        this.length = length;
     }
 
     OffHeapVectorByte(ByteBuffer data) {
-        this.buffer = data;
-        this.segment = MemorySegment.ofBuffer(data);
+        this(data.remaining());
+        segment.copyFrom(MemorySegment.ofBuffer(data));
     }
 
     OffHeapVectorByte(byte[] data) {
@@ -31,20 +41,17 @@ public class OffHeapVectorByte implements VectorByte<MemorySegment>
     }
 
     @Override
-    public long ramBytesUsed()
-    {
-         return MemoryLayout.sequenceLayout(buffer.remaining(), ValueLayout.JAVA_BYTE).byteSize();
+    public long ramBytesUsed() {
+        return MemoryLayout.sequenceLayout(length, ValueLayout.JAVA_BYTE).byteSize();
     }
 
     @Override
-    public byte[] array()
-    {
+    public byte[] array() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void copyFrom(VectorByte<?> src, int srcOffset, int destOffset, int length)
-    {
+    public void copyFrom(VectorByte<?> src, int srcOffset, int destOffset, int length) {
         OffHeapVectorByte csrc = (OffHeapVectorByte) src;
         segment.asSlice(destOffset, length).copyFrom(csrc.segment.asSlice(srcOffset));
     }
@@ -82,17 +89,15 @@ public class OffHeapVectorByte implements VectorByte<MemorySegment>
     }
 
     @Override
-    public boolean equals(Object o)
-    {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         OffHeapVectorByte that = (OffHeapVectorByte) o;
-        return Objects.equals(buffer, that.buffer);
+        return segment.equals(that.segment);
     }
 
     @Override
-    public int hashCode()
-    {
-        return Objects.hash(buffer);
+    public int hashCode() {
+        return segment.hashCode();
     }
 }

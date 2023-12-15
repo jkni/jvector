@@ -17,6 +17,7 @@
 package io.github.jbellis.jvector.vector;
 
 import java.util.List;
+import java.util.Vector;
 
 import io.github.jbellis.jvector.vector.cnative.NativeSimdOps;
 import io.github.jbellis.jvector.vector.types.VectorByte;
@@ -52,7 +53,8 @@ final class NativeVectorUtilSupport implements VectorUtilSupport
 
     @Override
     public float dotProduct(VectorFloat<?> a, int aoffset, VectorFloat<?> b, int boffset, int length) {
-        return NativeSimdOps.dot_product_f32(FloatVector.SPECIES_PREFERRED.vectorBitSize(), ((OffHeapVectorFloat)a).get(), aoffset, ((OffHeapVectorFloat)b).get(), boffset, length);
+        return VectorSimdOps.dotProduct((OffHeapVectorFloat)a, aoffset, (OffHeapVectorFloat)b, boffset, length);
+        //return NativeSimdOps.dot_product_f32(FloatVector.SPECIES_PREFERRED.vectorBitSize(), ((OffHeapVectorFloat)a).get(), aoffset, ((OffHeapVectorFloat)b).get(), boffset, length);
     }
 
     @Override

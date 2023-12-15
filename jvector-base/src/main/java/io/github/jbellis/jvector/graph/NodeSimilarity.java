@@ -62,6 +62,6 @@ public interface NodeSimilarity {
     }
 
     interface ReRanker<T> {
-        float similarityTo(int node2, Map<Integer, T> vectors);
+        float similarityTo(int node2, GraphIndex.View<T> vectors);
     }
 }

@@ -1,7 +1,9 @@
 package io.github.jbellis.jvector.vector;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -12,19 +14,25 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 final public class OffHeapVectorFloat implements VectorFloat<MemorySegment>
 {
     private final MemorySegment segment;
-    private final ByteBuffer buffer;
+    private static final ThreadLocal<SegmentAllocator> allocator =
+            ThreadLocal.withInitial(() -> SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64)));
     private final int length;
 
     OffHeapVectorFloat(int length) {
-        this.buffer = ByteBuffer.allocateDirect(length * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-        this.segment = MemorySegment.ofBuffer(buffer);
+        MemorySegment segment;
+        try {
+            segment = allocator.get().allocate(length * Float.BYTES, 64);
+        } catch (IndexOutOfBoundsException e) {
+            allocator.set(SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64)));
+            segment = allocator.get().allocate(length * Float.BYTES, 64);
+        }
+        this.segment = segment;
         this.length = length;
     }
 
     OffHeapVectorFloat(ByteBuffer buffer) {
-        this.buffer = buffer;
-        this.segment = MemorySegment.ofBuffer(buffer);
-        this.length = buffer.remaining();
+        this(buffer.remaining());
+        segment.copyFrom(MemorySegment.ofBuffer(buffer));
     }
 
     OffHeapVectorFloat(float[] data) {
@@ -101,12 +109,11 @@ final public class OffHeapVectorFloat implements VectorFloat<MemorySegment>
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         OffHeapVectorFloat that = (OffHeapVectorFloat) o;
-        return Objects.equals(buffer, that.buffer);
+        return segment.equals(that.segment);
     }
 
     @Override
-    public int hashCode()
-    {
-        return Objects.hash(buffer);
+    public int hashCode() {
+        return segment.hashCode();
     }
 }

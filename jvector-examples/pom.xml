@@ -119,7 +119,7 @@
                                     <arguments>
                                         <argument>-classpath</argument>
                                         <classpath/>
-                                        <argument>-Xmx32G</argument>
+                                        <argument>-Xmx12G</argument>
                                         <argument>-ea</argument>
                                         <argument>io.github.jbellis.jvector.example.Bench</argument>
                                         <argument>${benchArgs}</argument>
@@ -179,7 +179,8 @@
                                         <classpath/>
                                         <argument>--enable-preview</argument>
                                         <argument>--add-modules=jdk.incubator.vector</argument>
-                                        <argument>-Xmx12G</argument>
+                                        <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
+                                        <argument>-Xmx10G</argument>
                                         <argument>-ea</argument>
                                         <argument>io.github.jbellis.jvector.example.Bench</argument>
                                         <argument>${benchArgs}</argument>

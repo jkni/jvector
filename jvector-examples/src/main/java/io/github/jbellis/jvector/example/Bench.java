@@ -167,7 +167,7 @@ public class Bench {
                 if (cv != null) {
                     var view = index.getView();
                     NodeSimilarity.ApproximateScoreFunction sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
-                    NodeSimilarity.ReRanker<VectorFloat<?>> rr = (j, vectors) -> ds.similarityFunction.compare(queryVector, vectors.get(j));
+                    NodeSimilarity.ReRanker<VectorFloat<?>> rr = (j, vectors) -> ds.similarityFunction.compare(queryVector, vectors.getVector(j));
                     sr = new GraphSearcher.Builder<>(view)
                             .build()
                             .search(sf, rr, efSearch, Bits.ALL);
@@ -189,12 +189,12 @@ public class Bench {
 
         var mGrid = List.of(16); // List.of(8, 12, 16, 24, 32, 48, 64);
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
-        var efSearchGrid = List.of(1, 2);
+        var efSearchGrid = List.of(1, 2, 8);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
-                null, // uncompressed
-                ds -> BinaryQuantization.compute(ds.getBaseRavv()),
-                ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN),
-                ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 8, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
+                //null, // uncompressed
+                //ds -> BinaryQuantization.compute(ds.getBaseRavv()),
+                ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
+                //ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 8, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
 
         // args is list of regexes, possibly needing to be split by whitespace.
         // generate a regex that matches any regex in args, or if args is empty/null, match everything

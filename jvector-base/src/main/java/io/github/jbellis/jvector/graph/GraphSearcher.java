@@ -217,9 +217,9 @@ public class GraphSearcher<T> {
                 if (resultsQueue.size() >= topK) {
                     minAcceptedSimilarity = resultsQueue.topScore();
                 }
-                if (!scoreFunction.isExact()) {
+                /*if (!scoreFunction.isExact()) {
                     vectorsEncountered.put(topCandidateNode, view.getVector(topCandidateNode));
-                }
+                }*/
             }
 
             // add its neighbors to the candidates queue
@@ -239,14 +239,14 @@ public class GraphSearcher<T> {
         }
 
         assert resultsQueue.size() <= topK;
-        SearchResult.NodeScore[] nodes = extractScores(scoreFunction, reRanker, resultsQueue, vectorsEncountered);
+        SearchResult.NodeScore[] nodes = extractScores(scoreFunction, reRanker, resultsQueue, view);
         return new SearchResult(nodes, visited, numVisited);
     }
 
     private static <T> SearchResult.NodeScore[] extractScores(NodeSimilarity.ScoreFunction sf,
                                                               NodeSimilarity.ReRanker<T> reRanker,
                                                               NodeQueue resultsQueue,
-                                                              Map<Integer, T> vectorsEncountered)
+                                                              GraphIndex.View<T> view)
     {
         SearchResult.NodeScore[] nodes;
         if (sf.isExact()) {
@@ -257,7 +257,7 @@ public class GraphSearcher<T> {
                 nodes[i] = new SearchResult.NodeScore(n, nScore);
             }
         } else {
-            nodes = resultsQueue.nodesCopy(i -> reRanker.similarityTo(i, vectorsEncountered));
+            nodes = resultsQueue.nodesCopy(i -> reRanker.similarityTo(i, view));
             Arrays.sort(nodes, 0, resultsQueue.size(), Comparator.comparingDouble((SearchResult.NodeScore nodeScore) -> nodeScore.score).reversed());
         }
         return nodes;
