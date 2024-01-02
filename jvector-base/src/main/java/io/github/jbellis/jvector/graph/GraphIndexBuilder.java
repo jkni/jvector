@@ -435,9 +435,10 @@ public class GraphIndexBuilder<T> {
                 assert !deletedNodes.get(node);
 
                 ConcurrentNeighborSet neighbors = graph.getNeighbors(node);
-                if (neighbors.removeDeletedNeighbors(deletedNodes)) {
-                    affectedLiveNodes.add(node);
+                if (!neighbors.removeDeletedNeighbors(deletedNodes)) {
+                    continue;
                 }
+                affectedLiveNodes.add(node);
 
                 // add random connections if we've dropped below minimum
                 int minConnections = 1 + graph.maxDegree() / 2;
@@ -470,9 +471,7 @@ public class GraphIndexBuilder<T> {
         }
 
         // repair affected nodes
-        for (var node : affectedLiveNodes) {
-            addNNDescentConnections(node);
-        }
+        simdExecutor.submit(() -> affectedLiveNodes.stream().parallel().forEach(this::addNNDescentConnections)).join();
 
         // reset deleted collection
         deletedNodes.clear();

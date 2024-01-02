@@ -167,7 +167,7 @@ public class Bench {
                 if (cv != null) {
                     var view = index.getView();
                     NodeSimilarity.ApproximateScoreFunction sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
-                    NodeSimilarity.ReRanker<VectorFloat<?>> rr = (j, vectors) -> ds.similarityFunction.compare(queryVector, vectors.getVector(j));
+                    NodeSimilarity.ReRanker rr = (j) -> ds.similarityFunction.compare(queryVector, exactVv.vectorValue(j));
                     sr = new GraphSearcher.Builder<>(view)
                             .build()
                             .search(sf, rr, efSearch, Bits.ALL);
@@ -181,7 +181,7 @@ public class Bench {
                 nodesVisited.add(sr.getVisitedCount());
             });
         }
-        return new ResultSummary((int) topKfound.sum(), nodesVisited.sum()); // TODO do we care enough about visited count to hack it back into searcher?
+        return new ResultSummary((int) topKfound.sum(), nodesVisited.sum());
     }
 
     public static void main(String[] args) throws IOException {
@@ -191,23 +191,16 @@ public class Bench {
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
         var efSearchGrid = List.of(1, 2, 8);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
-                //null, // uncompressed
-                //ds -> BinaryQuantization.compute(ds.getBaseRavv()),
-                ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
-                //ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 8, ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
+                null, // uncompressed
+                // ds -> BinaryQuantization.compute(ds.getBaseRavv()),
+                ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4,
+                                                  ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
 
         // args is list of regexes, possibly needing to be split by whitespace.
         // generate a regex that matches any regex in args, or if args is empty/null, match everything
         var regex = args.length == 0 ? ".*" : Arrays.stream(args).flatMap(s -> Arrays.stream(s.split("\\s"))).map(s -> "(?:" + s + ")").collect(Collectors.joining("|"));
         // compile regex and do substring matching using find
         var pattern = Pattern.compile(regex);
-
-        // 2D grid, built and calculated at runtime
-        if (pattern.matcher("2dgrid").find()) {
-            var grid2d = DataSetCreator.create2DGrid(4_000_000, 10_000, 100);
-            gridSearch(grid2d, compressionGrid, mGrid, efConstructionGrid, efSearchGrid);
-            cachedCompressors.clear();
-        }
 
         // large embeddings calculated by Neighborhood Watch.  100k files by default; 1M also available
         var nwFiles = List.of(
@@ -242,6 +235,13 @@ public class Bench {
                 gridSearch(Hdf5Loader.load(f), compressionGrid, mGrid, efConstructionGrid, efSearchGrid);
                 cachedCompressors.clear();
             }
+        }
+
+        // 2D grid, built and calculated at runtime
+        if (pattern.matcher("2dgrid").find()) {
+            var grid2d = DataSetCreator.create2DGrid(4_000_000, 10_000, 100);
+            gridSearch(grid2d, compressionGrid, mGrid, efConstructionGrid, efSearchGrid);
+            cachedCompressors.clear();
         }
     }
 

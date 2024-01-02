@@ -22,7 +22,8 @@ import io.github.jbellis.jvector.util.RamUsageEstimator;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
+import java.util.Map;
 
 public abstract class GraphCache implements Accountable
 {
@@ -43,7 +44,7 @@ public abstract class GraphCache implements Accountable
     {
         if (distance < 0)
             return new EmptyGraphCache();
-        return new CHMGraphCache(graph, distance);
+        return new HMGraphCache(graph, distance);
     }
 
     public abstract long ramBytesUsed();
@@ -62,17 +63,21 @@ public abstract class GraphCache implements Accountable
         }
     }
 
-    private static final class CHMGraphCache extends GraphCache
+    private static final class HMGraphCache extends GraphCache
     {
-        private final ConcurrentHashMap<Integer, CachedNode> cache = new ConcurrentHashMap<>();
+        // Map is created on construction and never modified
+        private final Map<Integer, CachedNode> cache;
         private long ramBytesUsed = 0;
 
-        public CHMGraphCache(GraphIndex<VectorFloat<?>> graph, int distance) {
+        public HMGraphCache(GraphIndex<VectorFloat<?>> graph, int distance) {
             var view = graph.getView();
-            cacheNeighborsOf(view, view.entryNode(), distance);
+            HashMap<Integer, CachedNode> tmpCache = new HashMap<>();
+            cacheNeighborsOf(tmpCache, view, view.entryNode(), distance);
+            // Assigning to a final value ensure it is safely published
+            cache = tmpCache;
         }
 
-        private void cacheNeighborsOf(GraphIndex.View<VectorFloat<?>> view, int ordinal, int distance) {
+        private void cacheNeighborsOf(HashMap<Integer, CachedNode> tmpCache, GraphIndex.View<VectorFloat<?>> view, int ordinal, int distance) {
             // cache this node
             var it = view.getNeighborsIterator(ordinal);
             int[] neighbors = new int[it.size()];
@@ -81,14 +86,14 @@ public abstract class GraphCache implements Accountable
                 neighbors[i++] = it.next();
             }
             var node = new CachedNode(view.getVector(ordinal), neighbors);
-            cache.put(ordinal, node);
+            tmpCache.put(ordinal, node);
             ramBytesUsed += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + RamUsageEstimator.sizeOf(node.vector) + RamUsageEstimator.sizeOf(node.neighbors);
 
             // call recursively on neighbors
             if (distance > 0) {
                 for (var neighbor : neighbors) {
-                    if (!cache.containsKey(neighbor)) {
-                        cacheNeighborsOf(view, neighbor, distance - 1);
+                    if (!tmpCache.containsKey(neighbor)) {
+                        cacheNeighborsOf(tmpCache, view, neighbor, distance - 1);
                     }
                 }
             }
