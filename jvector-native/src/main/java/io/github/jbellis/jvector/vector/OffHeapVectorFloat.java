@@ -6,8 +6,6 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Objects;
 
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 
@@ -109,33 +107,11 @@ final public class OffHeapVectorFloat implements VectorFloat<MemorySegment>
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         OffHeapVectorFloat that = (OffHeapVectorFloat) o;
-        if (segment.equals(that.segment)) return true;
-        if (length != that.length) return false;
-        for (int i = 0; i < length; i++) {
-            if (segment.getAtIndex(ValueLayout.JAVA_FLOAT, i) != that.segment.getAtIndex(ValueLayout.JAVA_FLOAT, i)) {
-                return false;
-            }
-        }
-        return true;
+        return segment.mismatch(that.segment) == -1;
     }
 
     @Override
     public int hashCode() {
         return segment.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        // print segment as array, as if it were a float[]
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        for (int i = 0; i < length; i++) {
-            sb.append(segment.getAtIndex(ValueLayout.JAVA_FLOAT, i));
-            if (i < length - 1) {
-                sb.append(", ");
-            }
-        }
-        sb.append("]");
-        return sb.toString();
     }
 }

@@ -93,9 +93,7 @@ public class OffHeapVectorByte implements VectorByte<MemorySegment> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         OffHeapVectorByte that = (OffHeapVectorByte) o;
-        if (segment.equals(that.segment)) return true;
-        // compare as byte arrays
-        return segment.asSlice(0, length).asByteBuffer().order(ByteOrder.nativeOrder()).equals(that.segment.asSlice(0, length).asByteBuffer().order(ByteOrder.nativeOrder()));
+        return segment.mismatch(that.segment) == -1;
     }
 
     @Override
