@@ -24,7 +24,10 @@ import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.vector.VectorUtil;
 import io.github.jbellis.jvector.util.Bits;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
+import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
@@ -44,6 +47,8 @@ import java.util.stream.IntStream;
 import static org.junit.Assert.assertEquals;
 
 public class TestUtil {
+    private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
+
     /** min .. max inclusive on both ends, to match Lucene's */
     public static int nextInt(Random random, int min, int max) {
         return min + random.nextInt(1 + max - min);
@@ -96,24 +101,32 @@ public class TestUtil {
     }
 
     public static VectorFloat<?> randomVector(Random random, int dim) {
-      VectorFloat<?> vec = vector
-      for (int i = 0; i < dim; i++) {
-        vec[i] = random.nextFloat();
-        if (random.nextBoolean()) {
-          vec[i] = -vec[i];
-        }
-      }
-      VectorUtil.l2normalize(vec);
-      return vec;
+        return randomVector(vectorTypeSupport, random, dim);
     }
 
-    public static byte[] randomVector8(Random random, int dim) {
-      float[] fvec = randomVector(random, dim);
-      byte[] bvec = new byte[dim];
-      for (int i = 0; i < dim; i++) {
-        bvec[i] = (byte) (fvec[i] * 127);
-      }
-      return bvec;
+    public static VectorFloat<?> randomVector(VectorTypeSupport vts, Random random, int dim) {
+        VectorFloat<?> vec = vts.createFloatType(dim);
+        for (int i = 0; i < dim; i++) {
+            vec.set(i, random.nextFloat());
+            if (random.nextBoolean()) {
+                vec.set(i, -vec.get(i));
+            }
+        }
+        VectorUtil.l2normalize(vec);
+        return vec;
+    }
+
+    public static VectorByte<?> randomVector8(Random random, int dim) {
+        return randomVector8(vectorTypeSupport, random, dim);
+    }
+
+    public static VectorByte<?> randomVector8(VectorTypeSupport vts, Random random, int dim) {
+        VectorFloat<?> fvec = randomVector(random, dim);
+        VectorByte<?> bvec = vts.createByteType(dim);
+        for (int i = 0; i < dim; i++) {
+            bvec.set(i, (byte) (fvec.get(i) * 127));
+        }
+        return bvec;
     }
 
     public static <T> void writeGraph(GraphIndex<T> graph, RandomAccessVectorValues<T> vectors, Path outputPath) throws IOException {

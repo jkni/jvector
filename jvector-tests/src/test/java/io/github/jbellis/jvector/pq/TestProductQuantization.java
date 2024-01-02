@@ -34,24 +34,26 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 @ThreadLeakScope(ThreadLeakScope.Scope.NONE)
 public class TestProductQuantization extends RandomizedTest {
-    private static final VectorTypeSupport typeProvider = VectorizationProvider.getInstance().getVectorTypeSupport();
+    private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     @Test
     public void testPerfectReconstruction() {
         var vectors = IntStream.range(0,ProductQuantization.CLUSTERS).mapToObj(
-                i -> new float[] {getRandom().nextInt(100000), getRandom().nextInt(100000), getRandom().nextInt(100000) })
-                .collect(Collectors.toList());
+                i -> vectorTypeSupport.createFloatType(new float[] {getRandom().nextInt(100000), getRandom().nextInt(100000), getRandom().nextInt(100000) }))
+                .collect(Collectors.<VectorFloat<?>>toList());
         var ravv = new ListRandomAccessVectorValues(vectors, 3);
         var pq = ProductQuantization.compute(ravv, 2, false);
         var encoded = pq.encodeAll(vectors);
-        var decodedScratch = new float[3];
+        var decodedScratch = vectorTypeSupport.createFloatType(3);
         // if the number of vectors is equal to the number of clusters, we should perfectly reconstruct vectors
         for (int i = 0; i < vectors.size(); i++) {
             pq.decode(encoded[i], decodedScratch);
-            assertArrayEquals(Arrays.toString(vectors.get(i)) + "!=" + Arrays.toString(decodedScratch), vectors.get(i), decodedScratch, 0);
+            assertEquals(vectors.get(i), decodedScratch);
         }
     }
 }

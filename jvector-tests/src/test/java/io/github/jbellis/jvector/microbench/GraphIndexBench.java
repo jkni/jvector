@@ -24,6 +24,7 @@ import io.github.jbellis.jvector.graph.GraphIndexBuilder;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -40,18 +41,18 @@ import org.openjdk.jmh.infra.Blackhole;
 @Fork(warmups = 1, value = 1, jvmArgsAppend = "--add-modules=jdk.incubator.vector")
 public class GraphIndexBench {
 
-    static float[][] createRandomFloatVectors(int size, int dimension, Random random) {
-        float[][] vectors = new float[size][];
+    static VectorFloat<?>[] createRandomFloatVectors(int size, int dimension, Random random) {
+        VectorFloat<?>[] vectors = new VectorFloat<?>[size];
         for (int offset = 0; offset < size; offset++) {
             vectors[offset] = TestUtil.randomVector(random, dimension);
         }
         return vectors;
     }
 
-    static class TestRandomAccessReader implements RandomAccessVectorValues<float[]> {
-        private final float[][] values;
+    static class TestRandomAccessReader implements RandomAccessVectorValues<VectorFloat<?>> {
+        private final VectorFloat<?>[] values;
 
-        TestRandomAccessReader(float[][] values) {
+        TestRandomAccessReader(VectorFloat<?>[] values) {
             this.values = values;
         }
 
@@ -62,11 +63,11 @@ public class GraphIndexBench {
 
         @Override
         public int dimension() {
-            return values[0].length;
+            return values[0].length();
         }
 
         @Override
-        public float[] vectorValue(int targetOrd) {
+        public VectorFloat<?> vectorValue(int targetOrd) {
             return values[targetOrd];
         }
 
@@ -76,7 +77,7 @@ public class GraphIndexBench {
         }
 
         @Override
-        public RandomAccessVectorValues<float[]> copy() {
+        public RandomAccessVectorValues<VectorFloat<?>> copy() {
             return new TestRandomAccessReader(values);
         }
     }
@@ -96,7 +97,7 @@ public class GraphIndexBench {
     @BenchmarkMode(Mode.Throughput)
     @OutputTimeUnit(TimeUnit.SECONDS)
     public void testGraphBuild(Blackhole bh, Parameters p) {
-        GraphIndexBuilder<float[]> graphIndexBuilder =  new GraphIndexBuilder<>(p.vectors, VectorEncoding.FLOAT32, VectorSimilarityFunction.DOT_PRODUCT, 8, 60, 1.2f, 1.4f);
+        GraphIndexBuilder<VectorFloat<?>> graphIndexBuilder =  new GraphIndexBuilder<>(p.vectors, VectorEncoding.FLOAT32, VectorSimilarityFunction.DOT_PRODUCT, 8, 60, 1.2f, 1.4f);
         bh.consume(graphIndexBuilder.build());
     }
 }

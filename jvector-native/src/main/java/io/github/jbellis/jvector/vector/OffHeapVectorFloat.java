@@ -109,11 +109,33 @@ final public class OffHeapVectorFloat implements VectorFloat<MemorySegment>
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         OffHeapVectorFloat that = (OffHeapVectorFloat) o;
-        return segment.equals(that.segment);
+        if (segment.equals(that.segment)) return true;
+        if (length != that.length) return false;
+        for (int i = 0; i < length; i++) {
+            if (segment.getAtIndex(ValueLayout.JAVA_FLOAT, i) != that.segment.getAtIndex(ValueLayout.JAVA_FLOAT, i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
     public int hashCode() {
         return segment.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        // print segment as array, as if it were a float[]
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < length; i++) {
+            sb.append(segment.getAtIndex(ValueLayout.JAVA_FLOAT, i));
+            if (i < length - 1) {
+                sb.append(", ");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }

@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+/*
 package io.github.jbellis.jvector.microbench;
 
 
 import io.github.jbellis.jvector.vector.DefaultVectorizationProvider;
 import io.github.jbellis.jvector.vector.VectorUtil;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
@@ -31,12 +33,13 @@ import java.util.concurrent.TimeUnit;
 public class SimilarityBench {
 
     private static final DefaultVectorizationProvider java = new DefaultVectorizationProvider();
+    private static final VectorTypeSupport jts = java.getVectorTypeSupport();
 
     static int SIZE = 1536;
-    static final float[] q1 = new float[SIZE];
-    static final float[] q2 = new float[SIZE];
+    static final VectorFloat<?> q1 = new float[SIZE];
+    static final VectorFloat<?> q2 = new float[SIZE];
 
-    static final float[] q3 = new float[4];
+    static final VectorFloat<?> q3 = new float[4];
 
     static final byte[] indexes = new byte[384];
 
@@ -83,9 +86,10 @@ public class SimilarityBench {
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     public void dotProduct(Blackhole bh, Parameters p) {
         bh.consume(VectorUtil.dotProduct(q3, 0, q1, 22, q3.length));
-    }*/
+    }
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(args);
     }
 }
+*/

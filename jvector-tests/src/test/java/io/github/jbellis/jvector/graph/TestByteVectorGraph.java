@@ -64,20 +64,20 @@ public class TestByteVectorGraph extends GraphIndexTestCase<VectorByte<?>> {
 
     @Override
     AbstractMockVectorValues<VectorByte<?>> vectorValues(VectorFloat<?>[] values) {
-        byte[][] bValues = new byte[values.length][];
+        VectorByte<?>[] bValues = new VectorByte<?>[values.length];
         // The case when all floats fit within a byte already.
-        boolean scaleSimple = fitsInByte(values[0][0]);
+        boolean scaleSimple = fitsInByte(values[0].get(0));
         for (int i = 0; i < values.length; i++) {
-            bValues[i] = new byte[values[i].length];
-            for (int j = 0; j < values[i].length; j++) {
+            bValues[i] = vectorTypeSupport.createByteType(values[i].length());
+            for (int j = 0; j < values[i].length(); j++) {
                 final float v;
                 if (scaleSimple) {
-                    assert fitsInByte(values[i][j]);
-                    v = values[i][j];
+                    assert fitsInByte(values[i].get(j));
+                    v = values[i].get(j);
                 } else {
-                    v = values[i][j] * 127;
+                    v = values[i].get(j) * 127;
                 }
-                bValues[i][j] = (byte) v;
+                bValues[i].set(j, (byte) v);
             }
         }
         return MockByteVectorValues.fromValues(bValues);
@@ -90,6 +90,6 @@ public class TestByteVectorGraph extends GraphIndexTestCase<VectorByte<?>> {
 
     @Override
     VectorByte<?> getTargetVector() {
-        return new byte[]{1, 0};
+        return vectorTypeSupport.createByteType(new byte[]{1, 0});
     }
 }

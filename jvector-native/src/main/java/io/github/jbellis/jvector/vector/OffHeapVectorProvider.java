@@ -48,13 +48,13 @@ public class OffHeapVectorProvider implements VectorTypeSupport
         if (data instanceof ByteBuffer)
             return new OffHeapVectorByte((ByteBuffer) data);
 
-        return new ArrayVectorByte((byte[]) data);
+        return new OffHeapVectorByte((byte[]) data);
     }
 
     @Override
     public VectorByte<?> createByteType(int length)
     {
-        return new ArrayVectorByte(length);
+        return new OffHeapVectorByte(length);
     }
 
     @Override
@@ -62,7 +62,7 @@ public class OffHeapVectorProvider implements VectorTypeSupport
     {
         byte[] d = new byte[size];
         r.readFully(d);
-        return new ArrayVectorByte(d);
+        return new OffHeapVectorByte(d);
     }
 
     @Override

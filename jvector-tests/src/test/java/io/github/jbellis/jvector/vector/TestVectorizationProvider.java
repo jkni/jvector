@@ -29,10 +29,13 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.getRandom;
 
-public class TestVectorizationProvider {
+
+public class TestVectorizationProvider extends RandomizedTest {
     static boolean hasSimd = VectorizationProvider.vectorModulePresentAndReadable();
     static final Random r = new Random();
+    private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     @Test
     public void testSimilarityMetricsFloat() {
         Assume.assumeTrue(hasSimd);
@@ -49,8 +52,8 @@ public class TestVectorizationProvider {
         VectorFloat<?> v2a = TestUtil.randomVector(aTypes, r, 1021); //prime numbers
 
         r.setSeed(seed);
-        VectorFloat<?> v1b = GraphIndexTestCase.randomVector(bTypes, r, 1021); //prime numbers
-        VectorFloat<?> v2b = GraphIndexTestCase.randomVector(bTypes, r, 1021); //prime numbers
+        VectorFloat<?> v1b = TestUtil.randomVector(bTypes, r, 1021); //prime numbers
+        VectorFloat<?> v2b = TestUtil.randomVector(bTypes, r, 1021); //prime numbers
 
         Assert.assertEquals(a.getVectorUtilSupport().dotProduct(v1a,v2a), b.getVectorUtilSupport().dotProduct(v1b, v2b), 0.00001f);
         Assert.assertEquals(a.getVectorUtilSupport().cosine(v1a,v2a), b.getVectorUtilSupport().cosine(v1b, v2b), 0.00001f);
@@ -62,10 +65,10 @@ public class TestVectorizationProvider {
         Assume.assumeTrue(hasSimd);
 
         VectorizationProvider a = new DefaultVectorizationProvider();
-        VectorTypeSupport aTypes = new ArrayVectorProvider();
+        VectorTypeSupport aTypes = a.getVectorTypeSupport();
 
         VectorizationProvider b = VectorizationProvider.getInstance();
-        VectorTypeSupport bTypes = VectorizationProvider.getInstance().getVectorTypeSupport();
+        VectorTypeSupport bTypes = b.getVectorTypeSupport();
 
         for (int i = 0; i < 1000; i++) {
             long seed = System.nanoTime();
@@ -91,20 +94,20 @@ public class TestVectorizationProvider {
         VectorizationProvider b = VectorizationProvider.getInstance();
 
         for (int i = 0; i < 1000; i++) {
-            float[] v2 = TestUtil.randomVector(getRandom(), 256);
+            VectorFloat<?> v2 = TestUtil.randomVector(getRandom(), 256);
 
-            float[] v3 = new float[32];
+            VectorFloat<?> v3 = vectorTypeSupport.createFloatType(32);
             byte[] offsets = new byte[32];
             int skipSize = 256/32;
             //Assemble v3 from bits of v2
             for (int j = 0, c = 0; j < 256; j+=skipSize, c++) {
-                v3[c] = v2[j];
+                v3.set(c, v2.get(j));
                 offsets[c] = (byte) (c * skipSize);
             }
 
             Assert.assertEquals(a.getVectorUtilSupport().sum(v3), b.getVectorUtilSupport().sum(v3), 0.0001);
-            Assert.assertEquals(a.getVectorUtilSupport().sum(v3), a.getVectorUtilSupport().assembleAndSum(v2, 0, offsets), 0.0001);
-            Assert.assertEquals(b.getVectorUtilSupport().sum(v3), b.getVectorUtilSupport().assembleAndSum(v2, 0, offsets), 0.0001);
+            Assert.assertEquals(a.getVectorUtilSupport().sum(v3), a.getVectorUtilSupport().assembleAndSum(v2, 0, vectorTypeSupport.createByteType(offsets)), 0.0001);
+            Assert.assertEquals(b.getVectorUtilSupport().sum(v3), b.getVectorUtilSupport().assembleAndSum(v2, 0, vectorTypeSupport.createByteType(offsets)), 0.0001);
 
         }
     }

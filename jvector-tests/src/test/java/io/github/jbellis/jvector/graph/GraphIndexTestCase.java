@@ -207,7 +207,7 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
     public void testDiversity() {
         similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
         // Some carefully checked test cases with simple 2d vectors on the unit circle:
-        float[][] values = {
+        VectorFloat<?>[] values = {
                 unitVector2d(0.5),
                 unitVector2d(0.75),
                 unitVector2d(0.2),
@@ -265,12 +265,12 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
         // in particular if a new neighbor displaces an existing neighbor
         // by being closer to the target, yet none of the existing neighbors is closer to the new vector
         // than to the target -- ie they all remain diverse, so we simply drop the farthest one.
-        float[][] values = {
-                {0, 0, 0},
-                {0, 10, 0},
-                {0, 0, 20},
-                {10, 0, 0},
-                {0, 4, 0}
+        VectorFloat<?>[] values = {
+                vectorTypeSupport.createFloatType(new float[]{0, 0, 0}),
+                vectorTypeSupport.createFloatType(new float[]{0, 10, 0}),
+                vectorTypeSupport.createFloatType(new float[]{0, 0, 20}),
+                vectorTypeSupport.createFloatType(new float[]{10, 0, 0}),
+                vectorTypeSupport.createFloatType(new float[]{0, 4, 0})
         };
         AbstractMockVectorValues<T> vectors = vectorValues(values);
         // First add nodes until everybody gets a full neighbor list
@@ -298,12 +298,14 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
     public void testDiversity3d() {
         similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
         // test the case when a neighbor *becomes* non-diverse when a newer better neighbor arrives
-        float[][] values = {
-                {0, 0, 0},
-                {0, 10, 0},
-                {0, 0, 20},
-                {0, 9, 0}
+        VectorFloat<?>[] values = {
+                vectorTypeSupport.createFloatType(new float[]{0, 0, 0}),
+                vectorTypeSupport.createFloatType(new float[]{0, 10, 0}),
+                vectorTypeSupport.createFloatType(new float[]{0, 0, 20}),
+                vectorTypeSupport.createFloatType(new float[]{0, 9, 0})
         };
+        System.out.println(values[0].getClass());
+        System.out.println(vectorTypeSupport);
         AbstractMockVectorValues<T> vectors = vectorValues(values);
         // First add nodes until everybody gets a full neighbor list
         VectorEncoding vectorEncoding = getVectorEncoding();
@@ -369,11 +371,11 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
             for (int j = 0; j < size; j++) {
                 if (vectors.vectorValue(j) != null && acceptOrds.get(j)) {
                     if (getVectorEncoding() == VectorEncoding.BYTE) {
-                        assert query instanceof byte[];
-                        expected.push(j, similarityFunction.compare((byte[]) query, (byte[]) vectors.vectorValue(j)));
+                        assert query instanceof VectorByte<?>;
+                        expected.push(j, similarityFunction.compare((VectorByte<?>) query, (VectorByte<?>) vectors.vectorValue(j)));
                     } else {
-                        assert query instanceof float[];
-                        expected.push(j, similarityFunction.compare((float[]) query, (float[]) vectors.vectorValue(j)));
+                        assert query instanceof VectorFloat<?>;
+                        expected.push(j, similarityFunction.compare((VectorFloat<?>) query, (VectorFloat<?>) vectors.vectorValue(j)));
                     }
                 }
             }
@@ -431,7 +433,7 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
     /**
      * Returns vectors evenly distributed around the upper unit semicircle.
      */
-    public static class CircularFloatVectorValues implements RandomAccessVectorValues<float[]> {
+    public static class CircularFloatVectorValues implements RandomAccessVectorValues<VectorFloat<?>> {
 
         private final int size;
 
@@ -455,7 +457,7 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
         }
 
         @Override
-        public float[] vectorValue(int ord) {
+        public VectorFloat<?> vectorValue(int ord) {
             return unitVector2d(ord / (double) size);
         }
 
@@ -492,12 +494,12 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
 
         @Override
         public VectorByte<?> vectorValue(int ord) {
-            float[] value = unitVector2d(ord / (double) size);
-            byte[] bValue = new byte[value.length];
-            for (int i = 0; i < value.length; i++) {
-                bValue[i] = (byte) (value[i] * 127);
+            VectorFloat<?> value = unitVector2d(ord / (double) size);
+            byte[] bValue = new byte[value.length()];
+            for (int i = 0; i < value.length(); i++) {
+                bValue[i] = (byte) (value.get(i) * 127);
             }
-            return bValue; //TODO: turn byte array into VectorByte
+            return vectorTypeSupport.createByteType(bValue);
         }
 
         @Override
@@ -506,22 +508,22 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
         }
     }
 
-    private static float[] unitVector2d(double piRadians) {
-        return new float[] {
+    private static VectorFloat<?> unitVector2d(double piRadians) {
+        return vectorTypeSupport.createFloatType(new float[]{
                 (float) Math.cos(Math.PI * piRadians), (float) Math.sin(Math.PI * piRadians)
-        };
+        });
     }
 
-    public static float[][] createRandomFloatVectors(int size, int dimension, Random random) {
-        float[][] vectors = new float[size][];
+    public static VectorFloat<?>[] createRandomFloatVectors(int size, int dimension, Random random) {
+        VectorFloat<?>[] vectors = new VectorFloat<?>[size];
         for (int offset = 0; offset < size; offset++) {
             vectors[offset] = TestUtil.randomVector(random, dimension);
         }
         return vectors;
     }
 
-    static byte[][] createRandomByteVectors(int size, int dimension, Random random) {
-        byte[][] vectors = new byte[size][];
+    static VectorByte<?>[] createRandomByteVectors(int size, int dimension, Random random) {
+        VectorByte<?>[] vectors = new VectorByte<?>[size];
         for (int offset = 0; offset < size; offset++) {
             vectors[offset] = TestUtil.randomVector8(random, dimension);
         }

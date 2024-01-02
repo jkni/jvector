@@ -22,6 +22,7 @@ import io.github.jbellis.jvector.TestUtil;
 import io.github.jbellis.jvector.disk.SimpleMappedReader;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
 import org.junit.Test;
 
 import java.io.DataOutputStream;
@@ -57,6 +58,7 @@ public class TestCompressedVectors extends RandomizedTest {
         // Read compressed vectors
         try (var in = new SimpleMappedReader(cvFile.getAbsolutePath())) {
             var cv2 = PQVectors.load(in, 0);
+
             assertEquals(cv, cv2);
         }
     }
@@ -85,7 +87,7 @@ public class TestCompressedVectors extends RandomizedTest {
         }
     }
 
-    private static List<float[]> createRandomVectors(int count, int dimension) {
+    private static List<VectorFloat<?>> createRandomVectors(int count, int dimension) {
         return IntStream.range(0, count).mapToObj(i -> TestUtil.randomVector(getRandom(), dimension)).collect(Collectors.toList());
     }
 

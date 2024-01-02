@@ -29,8 +29,10 @@ import io.github.jbellis.jvector.TestUtil;
 import io.github.jbellis.jvector.util.FixedBitSet;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 import org.junit.Before;
 
 import java.util.Arrays;
@@ -42,7 +44,7 @@ import static org.junit.Assert.assertTrue;
  * Tests KNN graphs
  */
 public class TestFloatVectorGraph extends GraphIndexTestCase<VectorFloat<?>> {
-
+    protected static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     @Before
     public void setup() {
         similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
@@ -75,16 +77,16 @@ public class TestFloatVectorGraph extends GraphIndexTestCase<VectorFloat<?>> {
 
     @Override
     VectorFloat<?> getTargetVector() {
-        return new float[]{1f, 0f};
+        return vectorTypeSupport.createFloatType(new float[] {1f, 0f});
     }
 
     public void testSearchWithSkewedAcceptOrds() {
         int nDoc = 1000;
         similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-        RandomAccessVectorValues<float[]> vectors = circularVectorValues(nDoc);
+        RandomAccessVectorValues<VectorFloat<?>> vectors = circularVectorValues(nDoc);
         VectorEncoding vectorEncoding = getVectorEncoding();
         getRandom().nextInt();
-        GraphIndexBuilder<float[]> builder = new GraphIndexBuilder<>(vectors, vectorEncoding, similarityFunction, 16, 100, 1.0f, 1.0f);
+        GraphIndexBuilder<VectorFloat<?>> builder = new GraphIndexBuilder<>(vectors, vectorEncoding, similarityFunction, 16, 100, 1.0f, 1.0f);
         var graph = TestUtil.buildSequentially(builder, vectors);
 
         // Skip over half of the documents that are closest to the query vector

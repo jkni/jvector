@@ -96,7 +96,7 @@ public class TestDeletions extends LuceneTestCase {
         assertEquals(ravv.size() - nDeleted, graph.size());
 
         // cleanup should have added new connections to the node that would otherwise have been disconnected
-        var v = Arrays.copyOf(ravv.vectorValue(nodeToIsolate), ravv.dimension);
+        var v = ravv.vectorValue(nodeToIsolate).copy();
         var results = GraphSearcher.search(v, 10, ravv, VectorEncoding.FLOAT32, VectorSimilarityFunction.COSINE, graph, Bits.ALL);
         assertEquals(nodeToIsolate, results.getNodes()[0].node);
 
