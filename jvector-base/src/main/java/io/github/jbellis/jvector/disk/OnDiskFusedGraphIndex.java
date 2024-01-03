@@ -27,6 +27,7 @@ import io.github.jbellis.jvector.util.ArrayUtil;
 import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorByte;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
 import java.io.DataOutput;
@@ -268,8 +269,7 @@ public class OnDiskFusedGraphIndex<T> implements GraphIndex<T>, AutoCloseable, A
                 }
 
                 out.writeInt(newOrdinal); // unnecessary, but a reasonable sanity check
-                Io.writeFloats(out, (float[]) vectors.vectorValue(originalOrdinal));
-
+                vectorTypeSupport.writeFloatType(out, (VectorFloat<?>) vectors.vectorValue(originalOrdinal));
                 var neighbors = view.getNeighborsIterator(originalOrdinal);
                 int n = 0;
                 var neighborSize = neighbors.size();
