@@ -193,6 +193,7 @@ public class GraphSearcher<T> {
         // A bound that holds the minimum similarity to the query vector that a candidate vector must
         // have to be considered.
         float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
+        VectorFloat<?> similarities = null;
 
         while (candidates.size() > 0 && !resultsQueue.incomplete()) {
             // done when best candidate is worse than the worst result so far
@@ -217,15 +218,20 @@ public class GraphSearcher<T> {
                 }
             }
 
-            // add its neighbors to the candidates queue
-            for (var it = view.getNeighborsIterator(topCandidateNode); it.hasNext(); ) {
-                int friendOrd = it.nextInt();
+            var it = view.getNeighborsIterator(topCandidateNode);
+
+            if (scoreFunction.supportsBulkSimilarity()) {
+                similarities = scoreFunction.bulkSimilarityTo(topCandidateNode);
+            }
+
+            for (int i = 0; i < it.size(); i++) {
+                var friendOrd = it.nextInt();
                 if (visited.getAndSet(friendOrd)) {
                     continue;
                 }
                 numVisited++;
 
-                float friendSimilarity = scoreFunction.similarityTo(friendOrd);
+                float friendSimilarity = scoreFunction.supportsBulkSimilarity() ? similarities.get(i) : scoreFunction.similarityTo(friendOrd);
                 scoreTracker.track(friendSimilarity);
                 if (friendSimilarity >= minAcceptedSimilarity) {
                     candidates.push(friendOrd, friendSimilarity);

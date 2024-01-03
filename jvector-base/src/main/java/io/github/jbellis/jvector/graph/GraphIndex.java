@@ -25,6 +25,7 @@
 package io.github.jbellis.jvector.graph;
 
 import io.github.jbellis.jvector.util.Bits;
+import io.github.jbellis.jvector.vector.types.VectorByte;
 
 import java.io.IOException;
 
@@ -103,6 +104,10 @@ public interface GraphIndex<T> extends AutoCloseable {
          * at the end of the search.
          */
         T getVector(int node);
+
+        default VectorByte<?> getPackedNeighbors(int node) {
+            throw new UnsupportedOperationException();
+        }
 
         /**
          * Return a Bits instance indicating which nodes are live.  The result is undefined for

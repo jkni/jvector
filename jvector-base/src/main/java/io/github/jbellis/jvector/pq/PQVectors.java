@@ -117,7 +117,7 @@ public class PQVectors implements CompressedVectors {
         }
     }
 
-    VectorByte<?> get(int ordinal) {
+    public VectorByte<?> get(int ordinal) {
         return compressedVectors[ordinal];
     }
 

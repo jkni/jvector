@@ -103,6 +103,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     @Override
+    public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results) {
+        SimdOps.bulkShuffleSimilarity((ArrayVectorByte) shuffles, codebookCount, (ArrayVectorFloat) tlPartials, (ArrayVectorFloat) results);
+    }
+
+    @Override
     public int hammingDistance(long[] v1, long[] v2) {
         return SimdOps.hammingDistance(v1, v2);
     }

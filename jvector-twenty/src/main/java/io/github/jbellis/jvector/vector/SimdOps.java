@@ -16,15 +16,20 @@
 
 package io.github.jbellis.jvector.vector;
 
+import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
+import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorShuffle;
 
 import java.nio.ByteOrder;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Vector;
 
 final class SimdOps {
 
@@ -673,5 +678,30 @@ final class SimdOps {
         }
 
         return res;
+    }
+
+
+    public static void bulkShuffleSimilarity(ArrayVectorByte shuffles, int codebookCount, ArrayVectorFloat tlPartials, ArrayVectorFloat results) {
+        // 32 is from neighbor count
+        // 16 is from CLUSTERS
+        var tmpLeft = FloatVector.zero(FloatVector.SPECIES_512);
+        var tmpRight = FloatVector.zero(FloatVector.SPECIES_512);
+        var intShuffles = new int[shuffles.length()];
+        for (int i = 0; i < shuffles.length(); i++) {
+            intShuffles[i] = Byte.toUnsignedInt(shuffles.get(i));
+        }
+        for (int i = 0; i < codebookCount; i++) {
+            var shuffleLeft = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32);
+            var shuffleRight = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32 + 16);
+            var partials = FloatVector.SPECIES_512.fromArray(tlPartials, i * 16);
+            tmpLeft = tmpLeft.add(partials.rearrange(shuffleLeft));
+            tmpRight = tmpRight.add(partials.rearrange(shuffleRight));
+        }
+        tmpLeft = tmpLeft.add(1);
+        tmpRight = tmpRight.add(1);
+        tmpLeft = tmpLeft.div(2);
+        tmpRight = tmpRight.div(2);
+        tmpLeft.intoArray(results.get(), 0);
+        tmpRight.intoArray(results.get(), 16);
     }
 }

@@ -111,4 +111,9 @@ final class NativeVectorUtilSupport implements VectorUtilSupport
     public int hammingDistance(long[] v1, long[] v2) {
         return VectorSimdOps.hammingDistance(v1, v2);
     }
+
+    @Override
+    public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results) {
+        VectorSimdOps.bulkShuffleSimilarity((OffHeapVectorByte) shuffles, codebookCount, (OffHeapVectorFloat) tlPartials, (OffHeapVectorFloat) results);
+    }
 }

@@ -24,6 +24,7 @@
 
 package io.github.jbellis.jvector.vector;
 
+import java.util.Arrays;
 import java.util.List;
 
 import io.github.jbellis.jvector.vector.types.VectorByte;
@@ -302,4 +303,18 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     }
     return hd;
   } // TODO
+
+  @Override
+  public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results) {
+    //Arrays.fill(results, 0.0f);
+    for (int i = 0; i < codebookCount; i++) {
+      for (int j = 0; j < 32; j++) {
+        results.set(j, results.get(j) + tlPartials.get(shuffles.get(i * 32 + j)));
+      }
+    }
+
+    for (int i = 0; i < results.length(); i++) {
+        results.set(i, (results.get(i) + 1) / 2);
+    }
+  }
 }

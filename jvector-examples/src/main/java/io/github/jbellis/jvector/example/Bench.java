@@ -16,7 +16,9 @@
 
 package io.github.jbellis.jvector.example;
 
+import io.github.jbellis.jvector.disk.CachingFusedGraphIndex;
 import io.github.jbellis.jvector.disk.CachingGraphIndex;
+import io.github.jbellis.jvector.disk.OnDiskFusedGraphIndex;
 import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.example.util.DataSet;
 import io.github.jbellis.jvector.example.util.DataSetCreator;
@@ -33,6 +35,8 @@ import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.SearchResult;
 import io.github.jbellis.jvector.pq.BinaryQuantization;
 import io.github.jbellis.jvector.pq.CompressedVectors;
+import io.github.jbellis.jvector.pq.FastPQDecoder;
+import io.github.jbellis.jvector.pq.PQVectors;
 import io.github.jbellis.jvector.pq.ProductQuantization;
 import io.github.jbellis.jvector.pq.VectorCompressor;
 import io.github.jbellis.jvector.util.Bits;
@@ -78,23 +82,27 @@ public class Bench {
 
         var graphPath = testDirectory.resolve("graph" + M + efConstruction + ds.name);
         try {
-            try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(graphPath)))) {
-                OnDiskGraphIndex.write(onHeapGraph, floatVectors, outputStream);
-            }
-            try (var onDiskGraph = new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0))) {
-                for (var cf : compressionGrid) {
-                    var compressor = getCompressor(cf, ds);
-                    CompressedVectors cv;
-                    if (compressor == null) {
-                        cv = null;
-                        System.out.format("Uncompressed vectors%n");
-                    } else {
-                        start = System.nanoTime();
-                        var quantizedVectors = compressor.encodeAll(ds.baseVectors);
-                        cv = compressor.createCompressedVectors(quantizedVectors);
-                        System.out.format("%s encoded %,d vectors [%.2f MB] in %.2fs%n", compressor, ds.baseVectors.size(), (cv.ramBytesUsed() / 1024f / 1024f), (System.nanoTime() - start) / 1_000_000_000.0);
+            for (var cf : compressionGrid) {
+                var compressor = getCompressor(cf, ds);
+                CompressedVectors cv;
+                if (compressor == null) {
+                    cv = null;
+                    try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(graphPath)))) {
+                        OnDiskGraphIndex.write(onHeapGraph, floatVectors, outputStream);
                     }
+                    System.out.format("Uncompressed vectors%n");
+                } else {
+                    start = System.nanoTime();
+                    var quantizedVectors = compressor.encodeAll(ds.baseVectors);
+                    cv = compressor.createCompressedVectors(quantizedVectors);
+                    try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(graphPath)))) {
+                        OnDiskFusedGraphIndex.write(onHeapGraph, floatVectors, (PQVectors) cv, outputStream);
+                    }
+                    System.out.format("%s encoded %d vectors [%.2f MB] in %.2fs%n", compressor, ds.baseVectors.size(), (cv.ramBytesUsed() / 1024f / 1024f), (System.nanoTime() - start) / 1_000_000_000.0);
+                }
 
+                try (var onDiskGraph = cv == null ? new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0)) :
+                        new CachingFusedGraphIndex(new OnDiskFusedGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0))) {
                     int queryRuns = 2;
                     for (int overquery : efSearchOptions) {
                         start = System.nanoTime();
@@ -165,8 +173,9 @@ public class Bench {
                 var queryVector = ds.queryVectors.get(i);
                 SearchResult sr;
                 if (cv != null) {
+                    var fgi = (CachingFusedGraphIndex) index;
                     var view = index.getView();
-                    NodeSimilarity.ApproximateScoreFunction sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
+                    NodeSimilarity.ApproximateScoreFunction sf = new FastPQDecoder.DotProductDecoder((PQVectors) cv, fgi, queryVector);
                     NodeSimilarity.ReRanker rr = (j) -> ds.similarityFunction.compare(queryVector, exactVv.vectorValue(j));
                     sr = new GraphSearcher.Builder<>(view)
                             .build()
@@ -189,7 +198,7 @@ public class Bench {
 
         var mGrid = List.of(16); // List.of(8, 12, 16, 24, 32, 48, 64);
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
-        var efSearchGrid = List.of(1, 2);
+        var efSearchGrid = List.of(1, 2, 3, 4);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
                 null, // uncompressed
                 // ds -> BinaryQuantization.compute(ds.getBaseRavv()),
