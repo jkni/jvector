@@ -42,6 +42,11 @@ final public class ArrayVectorFloat implements VectorFloat<float[]>
     }
 
     @Override
+    public void zero() {
+        Arrays.fill(data, 0);
+    }
+
+    @Override
     public int length()
     {
         return data.length;

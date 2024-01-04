@@ -607,7 +607,7 @@ final class VectorSimdOps {
         for (int i = 0; i < codebookCount; i++) {
             var shuffleLeft = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32);
             var shuffleRight = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32 + 16);
-            var partials = FloatVector.SPECIES_512.fromArray(tlPartials, i * 16);
+            var partials = FloatVector.fromMemorySegment(FloatVector.SPECIES_512, tlPartials.get(), tlPartials.offset(i * 16), ByteOrder.LITTLE_ENDIAN);
             tmpLeft = tmpLeft.add(partials.rearrange(shuffleLeft));
             tmpRight = tmpRight.add(partials.rearrange(shuffleRight));
         }
@@ -616,6 +616,6 @@ final class VectorSimdOps {
         tmpLeft = tmpLeft.div(2);
         tmpRight = tmpRight.div(2);
         tmpLeft.intoMemorySegment(results.get(), 0, ByteOrder.LITTLE_ENDIAN);
-        tmpRight.intoMemorySegment(results.get(), 16, ByteOrder.LITTLE_ENDIAN);
+        tmpRight.intoMemorySegment(results.get(), results.offset(16), ByteOrder.LITTLE_ENDIAN);
     }
 }

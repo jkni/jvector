@@ -32,14 +32,14 @@ public class CachingFusedGraphIndex implements GraphIndex<VectorFloat<?>>, AutoC
 {
     private static final int CACHE_DISTANCE = 3;
 
-    private final GraphCache cache;
+    private final FusedGraphCache cache;
     private final OnDiskFusedGraphIndex<VectorFloat<?>> graph;
 
     public CachingFusedGraphIndex(OnDiskFusedGraphIndex<VectorFloat<?>> graph)
     {
         this.graph = graph;
         try {
-            this.cache = GraphCache.load(graph, CACHE_DISTANCE);
+            this.cache = FusedGraphCache.load(graph, CACHE_DISTANCE);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

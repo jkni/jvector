@@ -306,10 +306,9 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results) {
-    //Arrays.fill(results, 0.0f);
     for (int i = 0; i < codebookCount; i++) {
       for (int j = 0; j < 32; j++) {
-        results.set(j, results.get(j) + tlPartials.get(shuffles.get(i * 32 + j)));
+        results.set(j, results.get(j) + tlPartials.get(i * 16 + shuffles.get(i * 32 + j)));
       }
     }
 

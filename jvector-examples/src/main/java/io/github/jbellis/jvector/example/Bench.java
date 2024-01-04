@@ -176,6 +176,7 @@ public class Bench {
                     var fgi = (CachingFusedGraphIndex) index;
                     var view = index.getView();
                     NodeSimilarity.ApproximateScoreFunction sf = new FastPQDecoder.DotProductDecoder((PQVectors) cv, fgi, queryVector);
+                    //NodeSimilarity.ApproximateScoreFunction sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
                     NodeSimilarity.ReRanker rr = (j) -> ds.similarityFunction.compare(queryVector, exactVv.vectorValue(j));
                     sr = new GraphSearcher.Builder<>(view)
                             .build()
@@ -200,7 +201,7 @@ public class Bench {
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
         var efSearchGrid = List.of(1, 2, 3, 4);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
-                null, // uncompressed
+                //null, // uncompressed
                 // ds -> BinaryQuantization.compute(ds.getBaseRavv()),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4,
                                                   ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));

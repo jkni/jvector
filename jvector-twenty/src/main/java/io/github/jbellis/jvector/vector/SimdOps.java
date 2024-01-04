@@ -693,7 +693,7 @@ final class SimdOps {
         for (int i = 0; i < codebookCount; i++) {
             var shuffleLeft = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32);
             var shuffleRight = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32 + 16);
-            var partials = FloatVector.SPECIES_512.fromArray(tlPartials, i * 16);
+            var partials = FloatVector.SPECIES_512.fromArray(tlPartials.array(), i * 16);
             tmpLeft = tmpLeft.add(partials.rearrange(shuffleLeft));
             tmpRight = tmpRight.add(partials.rearrange(shuffleRight));
         }

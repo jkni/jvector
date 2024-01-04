@@ -123,10 +123,8 @@ public class OnDiskFusedGraphIndex<T> implements GraphIndex<T>, AutoCloseable, A
                 long offset = neighborsOffset +
                         node * (Integer.BYTES + (long) dimension * Float.BYTES + subspaceCount * maxDegree + (long) Integer.BYTES * (maxDegree + 1)) // earlier entries
                         + Integer.BYTES; // skip the ID
-                float[] vector = new float[dimension];
                 reader.seek(offset);
-                reader.readFully(vector);
-                return (T) vector;
+                return (T) vectorTypeSupport.readFloatType(reader, dimension);
             }
             catch (IOException e) {
                 throw new UncheckedIOException(e);
@@ -257,7 +255,7 @@ public class OnDiskFusedGraphIndex<T> implements GraphIndex<T>, AutoCloseable, A
             out.writeInt(view.entryNode());
             out.writeInt(graph.maxDegree());
             out.writeInt(pq.getCompressedSize());
-            byte[] compressedNeighbors = new byte[pq.getCompressedSize() * graph.maxDegree()];
+            VectorByte<?> compressedNeighbors = vectorTypeSupport.createByteType(pq.getCompressedSize() * graph.maxDegree());
 
             // for each graph node, write the associated vector and its neighbors
             for (int i = 0; i < oldToNewOrdinals.size(); i++) {
@@ -276,15 +274,23 @@ public class OnDiskFusedGraphIndex<T> implements GraphIndex<T>, AutoCloseable, A
                 for (; n < neighborSize; n++) {
                     var compressed = pq.get(neighbors.next());
                     // copy into the compressedNeighbors array
-                    System.arraycopy(compressed, 0, compressedNeighbors, n * pq.getCompressedSize(), pq.getCompressedSize());
+                    //System.arraycopy(compressed, 0, compressedNeighbors, n * pq.getCompressedSize(), pq.getCompressedSize());
+                    for (int j = 0; j < pq.getCompressedSize(); j++) {
+                        compressedNeighbors.set(n * pq.getCompressedSize() + j, compressed.get(j));
+                    }
+                }
+                for (; n < graph.maxDegree(); n++) {
+                    for (int j = 0; j < pq.getCompressedSize(); j++) {
+                        compressedNeighbors.set(n * pq.getCompressedSize() + j, (byte) 0);
+                    }
                 }
                 // fill rest of compressedNeighbors with 0
-                Arrays.fill(compressedNeighbors, n * pq.getCompressedSize(), graph.maxDegree() * pq.getCompressedSize(), (byte) 0);
+                //Arrays.fill(compressedNeighbors, n * pq.getCompressedSize(), graph.maxDegree() * pq.getCompressedSize(), (byte) 0);
 
                 for (int subspace = 0; subspace < pq.getCompressedSize(); subspace++) {
                     n = 0;
                     for (; n < neighborSize; n++) {
-                        out.writeByte(compressedNeighbors[n * pq.getCompressedSize() + subspace]);
+                        out.writeByte(compressedNeighbors.get(n * pq.getCompressedSize() + subspace));
                     }
                     for (; n < graph.maxDegree(); n++) {
                         out.writeByte(0);

@@ -69,6 +69,11 @@ final public class OffHeapVectorFloat implements VectorFloat<MemorySegment>
     }
 
     @Override
+    public void zero() {
+        segment.fill((byte) 0);
+    }
+
+    @Override
     public int length() {
         return length;
     }
