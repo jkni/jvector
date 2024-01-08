@@ -16,6 +16,7 @@
 
 package io.github.jbellis.jvector.vector;
 
+import java.lang.annotation.Native;
 import java.util.List;
 import java.util.Vector;
 
@@ -115,5 +116,6 @@ final class NativeVectorUtilSupport implements VectorUtilSupport
     @Override
     public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results) {
         VectorSimdOps.bulkShuffleSimilarity((OffHeapVectorByte) shuffles, codebookCount, (OffHeapVectorFloat) tlPartials, (OffHeapVectorFloat) results);
+        //NativeSimdOps.bulk_shuffle_similarity_f32_512(((OffHeapVectorByte) shuffles).get(), codebookCount, ((OffHeapVectorFloat) tlPartials).get(), ((OffHeapVectorFloat) results).get());
     }
 }

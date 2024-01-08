@@ -23,6 +23,16 @@ final class constants$0 {
         "dot_product_f32",
         constants$0.const$0
     );
+    static final FunctionDescriptor const$2 = FunctionDescriptor.ofVoid(
+        RuntimeHelper.POINTER,
+        JAVA_INT,
+        RuntimeHelper.POINTER,
+        RuntimeHelper.POINTER
+    );
+    static final MethodHandle const$3 = RuntimeHelper.downcallHandle(
+        "bulk_shuffle_similarity_f32_512",
+        constants$0.const$2
+    );
 }
 
 
