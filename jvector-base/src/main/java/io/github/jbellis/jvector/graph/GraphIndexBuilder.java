@@ -204,6 +204,12 @@ public class GraphIndexBuilder<T> {
         // backlinks can cause neighbors to soft-overflow, so do this before neighbors cleanup
         removeDeletedNodes();
 
+        if (graph.size() == 0) {
+            // After removing all the deleted nodes, we might end up with an empty graph.
+            // The calls below expect a valid entry node, but we do not have one right now.
+            return;
+        }
+
         // clean up overflowed neighbor lists
         parallelExecutor.submit(() -> IntStream.range(0, graph.getIdUpperBound()).parallel().forEach(i -> {
             var neighbors = graph.getNeighbors(i);
@@ -343,7 +349,7 @@ public class GraphIndexBuilder<T> {
             insertionsInProgress.remove(node);
         }
 
-        return graph.ramBytesUsedOneNode(0);
+        return graph.ramBytesUsedOneNode();
     }
 
     /**
@@ -476,7 +482,7 @@ public class GraphIndexBuilder<T> {
         // reset deleted collection
         deletedNodes.clear();
 
-        return nRemoved * graph.ramBytesUsedOneNode(0);
+        return nRemoved * graph.ramBytesUsedOneNode();
     }
 
     /**

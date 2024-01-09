@@ -86,7 +86,7 @@ public class TestFloatVectorGraph extends GraphIndexTestCase<VectorFloat<?>> {
         RandomAccessVectorValues<VectorFloat<?>> vectors = circularVectorValues(nDoc);
         VectorEncoding vectorEncoding = getVectorEncoding();
         getRandom().nextInt();
-        GraphIndexBuilder<VectorFloat<?>> builder = new GraphIndexBuilder<>(vectors, vectorEncoding, similarityFunction, 16, 100, 1.0f, 1.0f);
+        GraphIndexBuilder<VectorFloat<?>> builder = new GraphIndexBuilder<>(vectors, vectorEncoding, similarityFunction, 32, 100, 1.0f, 1.0f);
         var graph = TestUtil.buildSequentially(builder, vectors);
 
         // Skip over half of the documents that are closest to the query vector
