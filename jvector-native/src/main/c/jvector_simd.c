@@ -137,9 +137,13 @@ void bulk_shuffle_similarity_f32_512(const unsigned char* shuffles, int codebook
         shuffleRightRaw = _mm_loadu_si128((__m128i *)(shuffles + i * 32 + 16));
         shuffleLeft = _mm512_cvtepu8_epi32(shuffleLeftRaw);
         shuffleRight = _mm512_cvtepu8_epi32(shuffleRightRaw);
-        __m512 partialsVec = _mm512_loadu_ps(partials + i * 16);
-        tmpLeft = _mm512_add_ps(tmpLeft, _mm512_permutexvar_ps(shuffleLeft, partialsVec));
-        tmpRight = _mm512_add_ps(tmpRight, _mm512_permutexvar_ps(shuffleRight, partialsVec));
+        __m512 partialsVecA = _mm512_loadu_ps(partials + i * 32);
+        __m512 partialsVecB = _mm512_loadu_ps(partials + i * 32 + 16);
+        // use permutex2var_ps
+        __m512 partialsVec = _mm512_permutex2var_ps(partialsVecA, shuffleLeft, partialsVecB);
+        tmpLeft = _mm512_add_ps(tmpLeft, partialsVec);
+        partialsVec = _mm512_permutex2var_ps(partialsVecA, shuffleRight, partialsVecB);
+        tmpRight = _mm512_add_ps(tmpRight, partialsVec);
     }
 
     tmpLeft = _mm512_add_ps(tmpLeft, _mm512_set1_ps(1.0));

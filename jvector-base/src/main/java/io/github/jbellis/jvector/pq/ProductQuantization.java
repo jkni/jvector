@@ -48,7 +48,7 @@ import static java.lang.Math.min;
  */
 public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
     private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
-    static final int CLUSTERS = 16; // number of clusters per subspace = one byte's worth
+    static final int CLUSTERS = 32; // number of clusters per subspace = one byte's worth
     static final int K_MEANS_ITERATIONS = 6;
     static final int MAX_PQ_TRAINING_SET_SIZE = 128000;
 
