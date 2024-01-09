@@ -16,6 +16,8 @@ public interface VectorTypeSupport {
     VectorByte<?> createByteType(int length);
 
     VectorByte<?> readByteType(RandomAccessReader r, int size) throws IOException;
+
+    void readByteType(RandomAccessReader r, VectorByte<?> vector) throws IOException;
     void writeByteType(DataOutput out, VectorByte<?> vector) throws IOException;
 
 }

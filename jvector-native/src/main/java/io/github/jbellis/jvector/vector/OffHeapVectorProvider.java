@@ -66,6 +66,12 @@ public class OffHeapVectorProvider implements VectorTypeSupport
     }
 
     @Override
+    public void readByteType(RandomAccessReader r, VectorByte<?> vector) throws IOException {
+        r.readFully(((OffHeapVectorByte) vector).get().asByteBuffer());
+    }
+
+
+    @Override
     public void writeByteType(DataOutput out, VectorByte<?> vector) throws IOException
     {
         for (int i = 0; i < vector.length(); i++)

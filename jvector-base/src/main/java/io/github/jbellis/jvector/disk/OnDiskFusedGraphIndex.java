@@ -151,8 +151,8 @@ public class OnDiskFusedGraphIndex<T> implements GraphIndex<T>, AutoCloseable, A
                 reader.seek(neighborsOffset +
                         (node + 1) * (Integer.BYTES + (long) dimension * Float.BYTES)
                         + ((node) * (subspaceCount * maxDegree + Integer.BYTES * (maxDegree + 1))));
-
-                return vectorTypeSupport.readByteType(reader, packedNeighbors.length());
+                vectorTypeSupport.readByteType(reader, packedNeighbors);
+                return packedNeighbors;
             }
             catch (IOException e) {
                 throw new UncheckedIOException(e);

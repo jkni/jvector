@@ -41,12 +41,11 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
     }
 
     protected static abstract class CachingDecoder extends FastPQDecoder {
-        protected final ThreadLocal<VectorFloat<?>> partials = ThreadLocal.withInitial(() -> vectorTypeSupport.createFloatType(ProductQuantization.CLUSTERS * this.cv.pq.getSubspaceCount()));
-
+        protected final VectorFloat<?> partialSums;
         protected CachingDecoder(PQVectors cv, VectorFloat<?> query, VectorSimilarityFunction vsf) {
             super(cv);
             var pq = this.cv.pq;
-            var tlPartials = partials.get();
+            partialSums = cv.reusablePartialSums();
 
             VectorFloat<?> center = pq.getCenter();
             var centeredQuery = center == null ? query : VectorUtil.sub(query, center);
@@ -65,7 +64,7 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
                             var index = (byte) Math.min(127, Math.max(0, Math.round(dotProductShifted / step)));
                             //indexCounts[index] = indexCounts[index] + 1;*/
                             //tlPartials[baseOffset + j] = index
-                            tlPartials.set(baseOffset + j, VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length()));
+                            partialSums.set(baseOffset + j, VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length()));
                             break;
                         case EUCLIDEAN:
                             throw new UnsupportedOperationException("Unsupported similarity function " + vsf);
@@ -78,7 +77,7 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
         }
 
         protected float decodedSimilarity(VectorByte<?> encoded) {
-            return VectorUtil.assembleAndSum(partials.get(), ProductQuantization.CLUSTERS, encoded);
+            return VectorUtil.assembleAndSum(partialSums, ProductQuantization.CLUSTERS, encoded);
         }
     }
 
@@ -101,7 +100,7 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
             var permutedNodes = fgi.getPackedNeighbors(node2);
             results.zero();
             // TODO: fix mask
-            VectorUtil.bulkShuffleSimilarity(permutedNodes, cv.getCompressedSize(), partials.get(), results);
+            VectorUtil.bulkShuffleSimilarity(permutedNodes, cv.getCompressedSize(), partialSums, results);
             return results;
         }
 
