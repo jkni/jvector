@@ -131,7 +131,7 @@ final class VectorSimdOps {
         for (; i < vectorizedLength; i += FloatVector.SPECIES_64.length()) {
             FloatVector a = FloatVector.fromMemorySegment(FloatVector.SPECIES_64, v1.get(), v1.offset(v1offset + i), ByteOrder.LITTLE_ENDIAN);
             FloatVector b = FloatVector.fromMemorySegment(FloatVector.SPECIES_64, v2.get(), v2.offset(v2offset + i), ByteOrder.LITTLE_ENDIAN);
-            sum = sum.add(a.mul(b));
+            sum = a.fma(b, sum);
         }
 
         float res = sum.reduceLanes(VectorOperators.ADD);
@@ -156,7 +156,7 @@ final class VectorSimdOps {
         for (; i < vectorizedLength; i += FloatVector.SPECIES_128.length()) {
             FloatVector a = FloatVector.fromMemorySegment(FloatVector.SPECIES_128, v1.get(), v1.offset(v1offset + i), ByteOrder.LITTLE_ENDIAN);
             FloatVector b = FloatVector.fromMemorySegment(FloatVector.SPECIES_128, v2.get(), v2.offset(v2offset + i), ByteOrder.LITTLE_ENDIAN);
-            sum = sum.add(a.mul(b));
+            sum = a.fma(b, sum);
         }
 
         float res = sum.reduceLanes(VectorOperators.ADD);
@@ -182,7 +182,7 @@ final class VectorSimdOps {
         for (; i < vectorizedLength; i += FloatVector.SPECIES_256.length()) {
             FloatVector a = FloatVector.fromMemorySegment(FloatVector.SPECIES_256, v1.get(), v1.offset(v1offset + i), ByteOrder.LITTLE_ENDIAN);
             FloatVector b = FloatVector.fromMemorySegment(FloatVector.SPECIES_256, v2.get(), v1.offset(v2offset + i), ByteOrder.LITTLE_ENDIAN);
-            sum = sum.add(a.mul(b));
+            sum = a.fma(b, sum);
         }
 
         float res = sum.reduceLanes(VectorOperators.ADD);
@@ -207,7 +207,7 @@ final class VectorSimdOps {
         for (; i < vectorizedLength; i += FloatVector.SPECIES_PREFERRED.length()) {
             FloatVector a = FloatVector.fromMemorySegment(FloatVector.SPECIES_PREFERRED, v1.get(), v1.offset(v1offset + i), ByteOrder.LITTLE_ENDIAN);
             FloatVector b = FloatVector.fromMemorySegment(FloatVector.SPECIES_PREFERRED, v2.get(), v2.offset(v2offset + i), ByteOrder.LITTLE_ENDIAN);
-            sum = sum.add(a.mul(b));
+            sum = a.fma(b, sum);
         }
 
         float res = sum.reduceLanes(VectorOperators.ADD);
@@ -258,8 +258,8 @@ final class VectorSimdOps {
             var a = FloatVector.fromMemorySegment(FloatVector.SPECIES_PREFERRED, v1.get(), v1.offset(i), ByteOrder.LITTLE_ENDIAN);
             var b = FloatVector.fromMemorySegment(FloatVector.SPECIES_PREFERRED, v2.get(), v2.offset(i), ByteOrder.LITTLE_ENDIAN);
             vsum = vsum.add(a.mul(b));
-            vaMagnitude = vaMagnitude.add(a.mul(a));
-            vbMagnitude = vbMagnitude.add(b.mul(b));
+            vaMagnitude = a.fma(a, vaMagnitude);
+            vbMagnitude = b.fma(b, vbMagnitude);
         }
 
         float sum = vsum.reduceLanes(VectorOperators.ADD);
@@ -368,7 +368,7 @@ final class VectorSimdOps {
             FloatVector a = FloatVector.fromMemorySegment(FloatVector.SPECIES_64, v1.get(), v1.offset(v1offset + i), ByteOrder.LITTLE_ENDIAN);
             FloatVector b = FloatVector.fromMemorySegment(FloatVector.SPECIES_64, v2.get(), v2.offset(v2offset + i), ByteOrder.LITTLE_ENDIAN);
             var diff = a.sub(b);
-            sum = sum.add(diff.mul(diff));
+            sum = diff.fma(diff, sum);
         }
 
         float res = sum.reduceLanes(VectorOperators.ADD);
@@ -395,7 +395,7 @@ final class VectorSimdOps {
             FloatVector a = FloatVector.fromMemorySegment(FloatVector.SPECIES_128, v1.get(), v1.offset(v1offset + i), ByteOrder.LITTLE_ENDIAN);
             FloatVector b = FloatVector.fromMemorySegment(FloatVector.SPECIES_128, v2.get(), v2.offset(v2offset + i), ByteOrder.LITTLE_ENDIAN);
             var diff = a.sub(b);
-            sum = sum.add(diff.mul(diff));
+            sum = diff.fma(diff, sum);
         }
 
         float res = sum.reduceLanes(VectorOperators.ADD);
@@ -423,7 +423,7 @@ final class VectorSimdOps {
             FloatVector a = FloatVector.fromMemorySegment(FloatVector.SPECIES_256, v1.get(), v1.offset(v1offset + i), ByteOrder.LITTLE_ENDIAN);
             FloatVector b = FloatVector.fromMemorySegment(FloatVector.SPECIES_256, v2.get(), v2.offset(v2offset + i), ByteOrder.LITTLE_ENDIAN);
             var diff = a.sub(b);
-            sum = sum.add(diff.mul(diff));
+            sum = diff.fma(diff, sum);
         }
 
         float res = sum.reduceLanes(VectorOperators.ADD);
@@ -451,7 +451,7 @@ final class VectorSimdOps {
             FloatVector a = FloatVector.fromMemorySegment(FloatVector.SPECIES_PREFERRED, v1.get(), v1.offset(v1offset + i), ByteOrder.LITTLE_ENDIAN);
             FloatVector b = FloatVector.fromMemorySegment(FloatVector.SPECIES_PREFERRED, v2.get(), v2.offset(v2offset + i), ByteOrder.LITTLE_ENDIAN);
             var diff = a.sub(b);
-            sum = sum.add(diff.mul(diff));
+            sum = diff.fma(diff, sum);
         }
 
         float res = sum.reduceLanes(VectorOperators.ADD);

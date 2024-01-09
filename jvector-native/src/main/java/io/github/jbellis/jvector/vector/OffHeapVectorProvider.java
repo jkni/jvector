@@ -60,9 +60,9 @@ public class OffHeapVectorProvider implements VectorTypeSupport
     @Override
     public VectorByte<?> readByteType(RandomAccessReader r, int size) throws IOException
     {
-        byte[] d = new byte[size];
-        r.readFully(d);
-        return new OffHeapVectorByte(d);
+        var vector = new OffHeapVectorByte(size);
+        r.readFully(vector.get().asByteBuffer());
+        return vector;
     }
 
     @Override

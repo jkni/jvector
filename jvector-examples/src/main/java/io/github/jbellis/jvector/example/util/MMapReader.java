@@ -48,6 +48,15 @@ public class MMapReader implements RandomAccessReader {
         read(bytes, 0, bytes.length);
     }
 
+    public void readFully(ByteBuffer buffer) {
+        var length = buffer.remaining();
+        try {
+            this.buffer.memory().getBytes(position, buffer);
+        } finally {
+            position += length;
+        }
+    }
+
     private void read(byte[] bytes, int offset, int count) {
         try {
             buffer.memory().getBytes(position, bytes, offset, count);

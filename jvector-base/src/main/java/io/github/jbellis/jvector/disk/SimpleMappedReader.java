@@ -21,6 +21,7 @@ import sun.misc.Unsafe;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
@@ -81,6 +82,11 @@ public class SimpleMappedReader implements RandomAccessReader {
     @Override
     public void readFully(byte[] b) {
         mbb.get(b);
+    }
+
+    @Override
+    public void readFully(ByteBuffer buffer) throws IOException {
+        throw new UnsupportedOperationException();
     }
 
     @Override
