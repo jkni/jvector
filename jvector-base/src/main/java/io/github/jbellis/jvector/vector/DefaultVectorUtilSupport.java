@@ -302,7 +302,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       hd += Long.bitCount(v1[i] ^ v2[i]);
     }
     return hd;
-  } // TODO
+  }
 
   @Override
   public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results, VectorSimilarityFunction vsf) {

@@ -544,11 +544,6 @@ final class SimdOps {
                 throw new IllegalArgumentException("Vectors must have the same length");
             }
 
-            /*if (v1.length() == 2) {
-                subInPlace64(v1, v2);
-                return;
-            } TODO REENABLE */
-
             int vectorizedLength = FloatVector.SPECIES_PREFERRED.loopBound(v1.length());
 
             // Process the vectorized part

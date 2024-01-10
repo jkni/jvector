@@ -552,18 +552,13 @@ final class VectorSimdOps {
             throw new IllegalArgumentException("Vectors must have the same length");
         }
 
-        /*if (v1.length() == 2) {
-            addInPlace64(v1, v2);
-            return;
-        } TODO REENABLE */
-
         int vectorizedLength = FloatVector.SPECIES_PREFERRED.loopBound(v1.length());
 
         // Process the vectorized part
         for (int i = 0; i < vectorizedLength; i += FloatVector.SPECIES_PREFERRED.length()) {
             var a = FloatVector.fromMemorySegment(FloatVector.SPECIES_PREFERRED, v1.get(), v1.offset(i), ByteOrder.LITTLE_ENDIAN);
             var b = FloatVector.fromMemorySegment(FloatVector.SPECIES_PREFERRED, v2.get(), v2.offset(i), ByteOrder.LITTLE_ENDIAN);
-            a.sub(b).intoMemorySegment(v1.get(), v1.offset(i), ByteOrder.LITTLE_ENDIAN); // TODO THIS SEEMS INEFFICIENT
+            a.sub(b).intoMemorySegment(v1.get(), v1.offset(i), ByteOrder.LITTLE_ENDIAN);
         }
 
         // Process the tail

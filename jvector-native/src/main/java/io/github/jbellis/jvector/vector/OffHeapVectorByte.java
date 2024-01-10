@@ -5,6 +5,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Objects;
@@ -30,7 +31,7 @@ public class OffHeapVectorByte implements VectorByte<MemorySegment> {
         this.length = length;
     }
 
-    OffHeapVectorByte(ByteBuffer data) {
+    OffHeapVectorByte(Buffer data) {
         this(data.remaining());
         segment.copyFrom(MemorySegment.ofBuffer(data));
     }

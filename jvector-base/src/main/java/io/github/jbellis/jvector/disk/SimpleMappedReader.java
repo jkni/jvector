@@ -86,7 +86,12 @@ public class SimpleMappedReader implements RandomAccessReader {
 
     @Override
     public void readFully(ByteBuffer buffer) throws IOException {
-        throw new UnsupportedOperationException();
+        // slice mbb from current position to buffer.remaining()
+        var slice = mbb.slice();
+        var remaining = buffer.remaining();
+        slice.limit(remaining);
+        buffer.put(slice);
+        mbb.position(mbb.position() + remaining);
     }
 
     @Override

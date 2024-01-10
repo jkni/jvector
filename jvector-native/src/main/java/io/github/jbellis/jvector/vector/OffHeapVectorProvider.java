@@ -2,6 +2,7 @@ package io.github.jbellis.jvector.vector;
 
 import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
@@ -15,8 +16,8 @@ public class OffHeapVectorProvider implements VectorTypeSupport
     @Override
     public VectorFloat<?> createFloatType(Object data)
     {
-        if (data instanceof FloatBuffer)
-            return new OffHeapVectorFloat((ByteBuffer) data); // TODO: huh?
+        if (data instanceof Buffer)
+            return new OffHeapVectorFloat((Buffer) data);
 
         return new OffHeapVectorFloat((float[]) data);
     }
@@ -45,8 +46,8 @@ public class OffHeapVectorProvider implements VectorTypeSupport
     @Override
     public VectorByte<?> createByteType(Object data)
     {
-        if (data instanceof ByteBuffer)
-            return new OffHeapVectorByte((ByteBuffer) data);
+        if (data instanceof Buffer)
+            return new OffHeapVectorByte((Buffer) data);
 
         return new OffHeapVectorByte((byte[]) data);
     }

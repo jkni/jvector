@@ -5,6 +5,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 import io.github.jbellis.jvector.vector.types.VectorFloat;
@@ -28,7 +29,7 @@ final public class OffHeapVectorFloat implements VectorFloat<MemorySegment>
         this.length = length;
     }
 
-    OffHeapVectorFloat(ByteBuffer buffer) {
+    OffHeapVectorFloat(Buffer buffer) {
         this(buffer.remaining());
         segment.copyFrom(MemorySegment.ofBuffer(buffer));
     }
