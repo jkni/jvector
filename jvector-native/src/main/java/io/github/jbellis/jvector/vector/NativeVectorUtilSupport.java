@@ -114,8 +114,11 @@ final class NativeVectorUtilSupport implements VectorUtilSupport
     }
 
     @Override
-    public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results) {
-        //VectorSimdOps.bulkShuffleSimilarity((OffHeapVectorByte) shuffles, codebookCount, (OffHeapVectorFloat) tlPartials, (OffHeapVectorFloat) results);
-        NativeSimdOps.bulk_shuffle_similarity_f32_512(((OffHeapVectorByte) shuffles).get(), codebookCount, ((OffHeapVectorFloat) tlPartials).get(), ((OffHeapVectorFloat) results).get());
+    public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
+        switch (vsf) {
+            case DOT_PRODUCT -> NativeSimdOps.bulk_shuffle_dot_f32_512(((OffHeapVectorByte) shuffles).get(), codebookCount, ((OffHeapVectorFloat) tlPartials).get(), ((OffHeapVectorFloat) results).get());
+            case EUCLIDEAN -> NativeSimdOps.bulk_shuffle_euclidean_f32_512(((OffHeapVectorByte) shuffles).get(), codebookCount, ((OffHeapVectorFloat) tlPartials).get(), ((OffHeapVectorFloat) results).get());
+            case COSINE -> throw new UnsupportedOperationException("Cosine similarity not supported for bulkShuffleSimilarity");
+        }
     }
 }

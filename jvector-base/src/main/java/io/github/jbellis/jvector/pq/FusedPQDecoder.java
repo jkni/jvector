@@ -16,7 +16,6 @@
 package io.github.jbellis.jvector.pq;
 
 import io.github.jbellis.jvector.disk.CachingFusedGraphIndex;
-import io.github.jbellis.jvector.disk.CachingGraphIndex;
 import io.github.jbellis.jvector.disk.OnDiskFusedGraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
@@ -27,20 +26,19 @@ import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
-import java.util.Arrays;
-
 /**
  * Performs similarity comparisons with compressed vectors without decoding them
+ * These decoders are built to work with fused graph indexes and rely on having an FGI available
  */
-public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFunction {
+public abstract class FusedPQDecoder implements NodeSimilarity.ApproximateScoreFunction {
     protected final PQVectors cv;
     protected static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
 
-    protected FastPQDecoder(PQVectors cv) {
+    protected FusedPQDecoder(PQVectors cv) {
         this.cv = cv;
     }
 
-    protected static abstract class CachingDecoder extends FastPQDecoder {
+    protected static abstract class CachingDecoder extends FusedPQDecoder {
         protected final VectorFloat<?> partialSums;
         protected CachingDecoder(PQVectors cv, VectorFloat<?> query, VectorSimilarityFunction vsf) {
             super(cv);
@@ -84,7 +82,7 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
     public static class DotProductDecoder extends CachingDecoder {
         private final GraphIndex.View<VectorFloat<?>> fgi;
         private final VectorFloat<?> results;
-        public DotProductDecoder(PQVectors cv, CachingFusedGraphIndex fgi, VectorFloat<?> query) {
+        public DotProductDecoder(OnDiskFusedGraphIndex<VectorFloat<?>> fgi, PQVectors cv, VectorFloat<?> query) {
             super(cv, query, VectorSimilarityFunction.DOT_PRODUCT);
             this.fgi = fgi.getView();
             this.results = vectorTypeSupport.createFloatType(fgi.maxDegree());
@@ -99,8 +97,7 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
         public VectorFloat<?> bulkSimilarityTo(int node2) {
             var permutedNodes = fgi.getPackedNeighbors(node2);
             results.zero();
-            // TODO: fix mask
-            VectorUtil.bulkShuffleSimilarity(permutedNodes, cv.getCompressedSize(), partialSums, results);
+            VectorUtil.bulkShuffleSimilarity(permutedNodes, cv.getCompressedSize(), partialSums, results, VectorSimilarityFunction.DOT_PRODUCT);
             return results;
         }
 
@@ -110,18 +107,36 @@ public abstract class FastPQDecoder implements NodeSimilarity.ApproximateScoreFu
         }
     }
 
-    static class EuclideanDecoder extends PQDecoder.CachingDecoder {
-        public EuclideanDecoder(PQVectors cv, VectorFloat<?> query) {
+    public static class EuclideanDecoder extends PQDecoder.CachingDecoder {
+        private final GraphIndex.View<VectorFloat<?>> fgi;
+        private final VectorFloat<?> results;
+
+        public EuclideanDecoder(OnDiskFusedGraphIndex<VectorFloat<?>> fgi, PQVectors cv, VectorFloat<?> query) {
             super(cv, query, VectorSimilarityFunction.EUCLIDEAN);
+            this.fgi = fgi.getView();
+            this.results = vectorTypeSupport.createFloatType(fgi.maxDegree());
         }
 
         @Override
         public float similarityTo(int node2) {
             return 1 / (1 + decodedSimilarity(cv.get(node2)));
         }
+
+        @Override
+        public VectorFloat<?> bulkSimilarityTo(int node2) {
+            var permutedNodes = fgi.getPackedNeighbors(node2);
+            results.zero();
+            VectorUtil.bulkShuffleSimilarity(permutedNodes, cv.getCompressedSize(), partialSums, results, VectorSimilarityFunction.EUCLIDEAN);
+            return results;
+        }
+
+        @Override
+        public boolean supportsBulkSimilarity() {
+            return true;
+        }
     }
 
-    static class CosineDecoder extends PQDecoder {
+    public static class CosineDecoder extends PQDecoder {
         protected final VectorFloat<?> partialSums;
         protected final VectorFloat<?> aMagnitude;
         protected final float bMagnitude;

@@ -681,7 +681,7 @@ final class SimdOps {
     }
 
 
-    public static void bulkShuffleSimilarity(ArrayVectorByte shuffles, int codebookCount, ArrayVectorFloat tlPartials, ArrayVectorFloat results) {
+    public static void bulkShuffleSimilarity(ArrayVectorByte shuffles, int codebookCount, ArrayVectorFloat tlPartials, ArrayVectorFloat results, VectorSimilarityFunction vsf) {
         // 32 is from neighbor count
         // 16 is from CLUSTERS
         var tmpLeft = FloatVector.zero(FloatVector.SPECIES_512);
@@ -697,10 +697,24 @@ final class SimdOps {
             tmpLeft = tmpLeft.add(partials.rearrange(shuffleLeft));
             tmpRight = tmpRight.add(partials.rearrange(shuffleRight));
         }
-        tmpLeft = tmpLeft.add(1);
-        tmpRight = tmpRight.add(1);
-        tmpLeft = tmpLeft.div(2);
-        tmpRight = tmpRight.div(2);
+        switch (vsf) {
+            case DOT_PRODUCT:
+                tmpLeft = tmpLeft.add(1);
+                tmpRight = tmpRight.add(1);
+                tmpLeft = tmpLeft.div(2);
+                tmpRight = tmpRight.div(2);
+                break;
+            case EUCLIDEAN:
+                tmpLeft = tmpLeft.add(1);
+                tmpRight = tmpRight.add(1);
+                var ones = FloatVector.broadcast(FloatVector.SPECIES_512, 1);
+                tmpLeft = ones.div(tmpLeft);
+                tmpRight = ones.div(tmpRight);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown similarity function: " + vsf);
+        }
+
         tmpLeft.intoArray(results.get(), 0);
         tmpRight.intoArray(results.get(), 16);
     }

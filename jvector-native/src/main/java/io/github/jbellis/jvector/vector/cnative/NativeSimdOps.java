@@ -33,16 +33,32 @@ public class NativeSimdOps  {
             throw new AssertionError("should not reach here", ex$);
         }
     }
-    public static MethodHandle bulk_shuffle_similarity_f32_512$MH() {
-        return RuntimeHelper.requireNonNull(constants$0.const$3,"bulk_shuffle_similarity_f32_512");
+    public static MethodHandle bulk_shuffle_dot_f32_512$MH() {
+        return RuntimeHelper.requireNonNull(constants$0.const$3,"bulk_shuffle_dot_f32_512");
     }
     /**
      * {@snippet :
-     * void bulk_shuffle_similarity_f32_512(unsigned char* shuffles, int codebookCount, float* partials, float* results);
+     * void bulk_shuffle_dot_f32_512(unsigned char* shuffles, int codebookCount, float* partials, float* results);
      * }
      */
-    public static void bulk_shuffle_similarity_f32_512(MemorySegment shuffles, int codebookCount, MemorySegment partials, MemorySegment results) {
-        var mh$ = bulk_shuffle_similarity_f32_512$MH();
+    public static void bulk_shuffle_dot_f32_512(MemorySegment shuffles, int codebookCount, MemorySegment partials, MemorySegment results) {
+        var mh$ = bulk_shuffle_dot_f32_512$MH();
+        try {
+            mh$.invokeExact(shuffles, codebookCount, partials, results);
+        } catch (Throwable ex$) {
+            throw new AssertionError("should not reach here", ex$);
+        }
+    }
+    public static MethodHandle bulk_shuffle_euclidean_f32_512$MH() {
+        return RuntimeHelper.requireNonNull(constants$0.const$4,"bulk_shuffle_euclidean_f32_512");
+    }
+    /**
+     * {@snippet :
+     * void bulk_shuffle_euclidean_f32_512(unsigned char* shuffles, int codebookCount, float* partials, float* results);
+     * }
+     */
+    public static void bulk_shuffle_euclidean_f32_512(MemorySegment shuffles, int codebookCount, MemorySegment partials, MemorySegment results) {
+        var mh$ = bulk_shuffle_euclidean_f32_512$MH();
         try {
             mh$.invokeExact(shuffles, codebookCount, partials, results);
         } catch (Throwable ex$) {

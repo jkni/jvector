@@ -16,15 +16,12 @@
 
 package io.github.jbellis.jvector.disk;
 
-import io.github.jbellis.jvector.graph.GraphIndex;
-import io.github.jbellis.jvector.graph.NodesIterator;
-import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
-import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
+import io.github.jbellis.jvector.graph.*;
+import io.github.jbellis.jvector.pq.FusedPQDecoder;
 import io.github.jbellis.jvector.pq.PQVectors;
-import io.github.jbellis.jvector.pq.ProductQuantization;
 import io.github.jbellis.jvector.util.Accountable;
-import io.github.jbellis.jvector.util.ArrayUtil;
 import io.github.jbellis.jvector.util.Bits;
+import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
@@ -40,7 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-public class OnDiskFusedGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accountable
+public class OnDiskFusedGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable, Accountable
 {
     private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     private final ReaderSupplier readerSupplier;
@@ -101,6 +98,17 @@ public class OnDiskFusedGraphIndex<T> implements GraphIndex<T>, AutoCloseable, A
     public OnDiskFusedGraphIndex<T>.OnDiskView getView()
     {
         return new OnDiskView(readerSupplier.get());
+    }
+
+    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(PQVectors pq, T query, VectorSimilarityFunction similarityFunction) {
+        switch (similarityFunction) {
+            case DOT_PRODUCT:
+                return new FusedPQDecoder.DotProductDecoder((OnDiskFusedGraphIndex<VectorFloat<?>>) this, pq, (VectorFloat<?>) query);
+            case EUCLIDEAN:
+                return new FusedPQDecoder.EuclideanDecoder((OnDiskFusedGraphIndex<VectorFloat<?>>) this, pq, (VectorFloat<?>) query);
+            default:
+                throw new IllegalArgumentException("Unsupported similarity function " + similarityFunction);
+        }
     }
 
     // TODO: This is fake generic until the reading functionality uses T

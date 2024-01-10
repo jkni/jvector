@@ -305,7 +305,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   } // TODO
 
   @Override
-  public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results) {
+  public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
     for (int i = 0; i < codebookCount; i++) {
       for (int j = 0; j < 32; j++) {
         results.set(j, results.get(j) + tlPartials.get(i * 16 + shuffles.get(i * 32 + j)));
@@ -313,7 +313,16 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     }
 
     for (int i = 0; i < results.length(); i++) {
-        results.set(i, (results.get(i) + 1) / 2);
+      switch (vsf) {
+        case EUCLIDEAN:
+          results.set(i, 1 / (1 + results.get(i)));
+          break;
+        case DOT_PRODUCT:
+          results.set(i, (results.get(i) + 1) / 2);
+          break;
+        default:
+          throw new UnsupportedOperationException("Unsupported similarity function " + vsf);
+      }
     }
   }
 }

@@ -16,6 +16,7 @@
 
 package io.github.jbellis.jvector.pq;
 
+import io.github.jbellis.jvector.disk.OnDiskFusedGraphIndex;
 import io.github.jbellis.jvector.disk.RandomAccessReader;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.util.RamUsageEstimator;

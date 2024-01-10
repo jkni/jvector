@@ -124,7 +124,7 @@ float dot_product_f32(int preferred_size, const float* a, int aoffset, const flo
         tmpLeft.intoMemorySegment(results.get(), 0, ByteOrder.LITTLE_ENDIAN);
         tmpRight.intoMemorySegment(results.get(), results.offset(16), ByteOrder.LITTLE_ENDIAN);
     }*/
-void bulk_shuffle_similarity_f32_512(const unsigned char* shuffles, int codebookCount, const float* partials, float* results) {
+void bulk_shuffle_dot_f32_512(const unsigned char* shuffles, int codebookCount, const float* partials, float* results) {
     __m128i shuffleLeftRaw;
     __m128i shuffleRightRaw;
     __m512i shuffleLeft;
@@ -155,3 +155,34 @@ void bulk_shuffle_similarity_f32_512(const unsigned char* shuffles, int codebook
     _mm512_storeu_ps(results + 16, tmpRight);
 }
 
+void bulk_shuffle_euclidean_f32_512(const unsigned char* shuffles, int codebookCount, const float* partials, float* results) {
+    __m128i shuffleLeftRaw;
+    __m128i shuffleRightRaw;
+    __m512i shuffleLeft;
+    __m512i shuffleRight;
+    __m512 tmpLeft = _mm512_setzero_ps();
+    __m512 tmpRight = _mm512_setzero_ps();
+
+    for (int i = 0; i < codebookCount; i++) {
+        shuffleLeftRaw = _mm_loadu_si128((__m128i *)(shuffles + i * 32));
+        shuffleRightRaw = _mm_loadu_si128((__m128i *)(shuffles + i * 32 + 16));
+        shuffleLeft = _mm512_cvtepu8_epi32(shuffleLeftRaw);
+        shuffleRight = _mm512_cvtepu8_epi32(shuffleRightRaw);
+        __m512 partialsVecA = _mm512_loadu_ps(partials + i * 32);
+        __m512 partialsVecB = _mm512_loadu_ps(partials + i * 32 + 16);
+        __m512 partialsVec = _mm512_permutex2var_ps(partialsVecA, shuffleLeft, partialsVecB);
+        tmpLeft = _mm512_add_ps(tmpLeft, partialsVec);
+        partialsVec = _mm512_permutex2var_ps(partialsVecA, shuffleRight, partialsVecB);
+        tmpRight = _mm512_add_ps(tmpRight, partialsVec);
+    }
+
+    // add 1 to tmpLeft/tmpRight
+    __m512 ones = _mm512_set1_ps(1.0);
+    tmpLeft = _mm512_add_ps(tmpLeft, ones);
+    tmpRight = _mm512_add_ps(tmpRight, ones);
+    // reciprocal of tmpLeft/tmpRight
+    tmpLeft = _mm512_rcp14_ps(tmpLeft);
+    tmpRight = _mm512_rcp14_ps(tmpRight);
+    _mm512_storeu_ps(results, tmpLeft);
+    _mm512_storeu_ps(results + 16, tmpRight);
+}

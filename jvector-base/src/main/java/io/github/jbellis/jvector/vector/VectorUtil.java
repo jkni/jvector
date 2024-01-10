@@ -242,8 +242,8 @@ public final class VectorUtil {
     return impl.assembleAndSum(data, dataBase, dataOffsets);
   }
 
-  public static void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results) {
-    impl.bulkShuffleSimilarity(shuffles, codebookCount, tlPartials, results);
+  public static void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
+    impl.bulkShuffleSimilarity(shuffles, codebookCount, tlPartials, results, vsf);
   }
 
   public static int hammingDistance(long[] v1, long[] v2) {

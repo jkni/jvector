@@ -30,7 +30,11 @@ final class constants$0 {
         RuntimeHelper.POINTER
     );
     static final MethodHandle const$3 = RuntimeHelper.downcallHandle(
-        "bulk_shuffle_similarity_f32_512",
+        "bulk_shuffle_dot_f32_512",
+        constants$0.const$2
+    );
+    static final MethodHandle const$4 = RuntimeHelper.downcallHandle(
+        "bulk_shuffle_euclidean_f32_512",
         constants$0.const$2
     );
 }

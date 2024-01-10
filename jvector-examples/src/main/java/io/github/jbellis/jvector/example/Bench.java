@@ -33,12 +33,7 @@ import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.SearchResult;
-import io.github.jbellis.jvector.pq.BinaryQuantization;
-import io.github.jbellis.jvector.pq.CompressedVectors;
-import io.github.jbellis.jvector.pq.FastPQDecoder;
-import io.github.jbellis.jvector.pq.PQVectors;
-import io.github.jbellis.jvector.pq.ProductQuantization;
-import io.github.jbellis.jvector.pq.VectorCompressor;
+import io.github.jbellis.jvector.pq.*;
 import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
@@ -175,7 +170,7 @@ public class Bench {
                 if (cv != null) {
                     var fgi = (CachingFusedGraphIndex) index;
                     var view = index.getView();
-                    NodeSimilarity.ApproximateScoreFunction sf = new FastPQDecoder.DotProductDecoder((PQVectors) cv, fgi, queryVector);
+                    NodeSimilarity.ApproximateScoreFunction sf = ((CachingFusedGraphIndex) index).approximateFusedScoreFunctionFor((PQVectors) cv, queryVector, ds.similarityFunction);
                     //NodeSimilarity.ApproximateScoreFunction sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
                     NodeSimilarity.ReRanker rr = (j) -> ds.similarityFunction.compare(queryVector, exactVv.vectorValue(j));
                     sr = new GraphSearcher.Builder<>(view)

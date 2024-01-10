@@ -19,9 +19,12 @@ package io.github.jbellis.jvector.disk;
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.util.RamUsageEstimator;
+import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class FusedGraphCache implements Accountable
@@ -29,10 +32,12 @@ public abstract class FusedGraphCache implements Accountable
     public static final class CachedNode {
         public final VectorFloat<?> vector;
         public final int[] neighbors;
+        public final VectorByte<?> packedNeighbors;
 
-        public CachedNode(VectorFloat<?> vector, int[] neighbors) {
+        public CachedNode(VectorFloat<?> vector, int[] neighbors, VectorByte<?> packedNeighbors) {
             this.vector = vector;
             this.neighbors = neighbors;
+            this.packedNeighbors = packedNeighbors;
         }
     }
 
@@ -43,7 +48,7 @@ public abstract class FusedGraphCache implements Accountable
     {
         if (distance < 0)
             return new EmptyGraphCache();
-        return new CHMGraphCache(graph, distance);
+        return new HMGraphCache(graph, distance);
     }
 
     public abstract long ramBytesUsed();
@@ -62,17 +67,20 @@ public abstract class FusedGraphCache implements Accountable
         }
     }
 
-    private static final class CHMGraphCache extends FusedGraphCache
+    private static final class HMGraphCache extends FusedGraphCache
     {
-        private final ConcurrentHashMap<Integer, CachedNode> cache = new ConcurrentHashMap<>();
+        private final Map<Integer, CachedNode> cache;
         private long ramBytesUsed = 0;
 
-        public CHMGraphCache(GraphIndex<VectorFloat<?>> graph, int distance) {
+        public HMGraphCache(GraphIndex<VectorFloat<?>> graph, int distance) {
             var view = graph.getView();
-            cacheNeighborsOf(view, view.entryNode(), distance);
+            HashMap<Integer, FusedGraphCache.CachedNode> tmpCache = new HashMap<>();
+            cacheNeighborsOf(tmpCache, view, view.entryNode(), distance);
+            // Assigning to a final value ensure it is safely published
+            cache = tmpCache;
         }
 
-        private void cacheNeighborsOf(GraphIndex.View<VectorFloat<?>> view, int ordinal, int distance) {
+        private void cacheNeighborsOf(HashMap<Integer, CachedNode> tmpCache, GraphIndex.View<VectorFloat<?>> view, int ordinal, int distance) {
             // cache this node
             var it = view.getNeighborsIterator(ordinal);
             int[] neighbors = new int[it.size()];
@@ -80,15 +88,15 @@ public abstract class FusedGraphCache implements Accountable
             while (it.hasNext()) {
                 neighbors[i++] = it.next();
             }
-            var node = new CachedNode(view.getVector(ordinal), neighbors);
-            cache.put(ordinal, node);
+            var node = new CachedNode(view.getVector(ordinal), neighbors, view.getPackedNeighbors(ordinal));
+            tmpCache.put(ordinal, node);
             ramBytesUsed += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + RamUsageEstimator.sizeOf(node.vector) + RamUsageEstimator.sizeOf(node.neighbors);
 
             // call recursively on neighbors
             if (distance > 0) {
                 for (var neighbor : neighbors) {
-                    if (!cache.containsKey(neighbor)) {
-                        cacheNeighborsOf(view, neighbor, distance - 1);
+                    if (!tmpCache.containsKey(neighbor)) {
+                        cacheNeighborsOf(tmpCache, view, neighbor, distance - 1);
                     }
                 }
             }

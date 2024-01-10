@@ -16,9 +16,11 @@
 
 package io.github.jbellis.jvector.disk;
 
+import io.github.jbellis.jvector.graph.FusedGraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.graph.NodesIterator;
+import io.github.jbellis.jvector.pq.PQVectors;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
@@ -28,7 +30,7 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
-public class CachingFusedGraphIndex implements GraphIndex<VectorFloat<?>>, AutoCloseable, Accountable
+public class CachingFusedGraphIndex implements FusedGraphIndex<VectorFloat<?>>, AutoCloseable, Accountable
 {
     private static final int CACHE_DISTANCE = 3;
 
@@ -75,6 +77,11 @@ public class CachingFusedGraphIndex implements GraphIndex<VectorFloat<?>>, AutoC
         graph.close();
     }
 
+    @Override
+    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(PQVectors pq, VectorFloat<?> query, VectorSimilarityFunction similarityFunction) {
+        return graph.approximateFusedScoreFunctionFor(pq, query, similarityFunction);
+    }
+
     public class CachedView implements View<VectorFloat<?>> {
         private final View<VectorFloat<?>> view;
 
@@ -102,6 +109,10 @@ public class CachingFusedGraphIndex implements GraphIndex<VectorFloat<?>>, AutoC
 
         @Override
         public VectorByte<?> getPackedNeighbors(int node) {
+            var cached = cache.getNode(node);
+            if (cached != null) {
+                return cached.packedNeighbors;
+            }
             return view.getPackedNeighbors(node);
         }
 
