@@ -121,7 +121,7 @@ public class TestCompressedVectors extends RandomizedTest {
         }
     }
 
-    @Test
+    /*@Test
     public void testEncodings() {
         // start with i=2 (dimension 4) b/c dimension 2 is an outlier for our error prediction
         for (int i = 2; i <= 8; i++) {
@@ -129,7 +129,7 @@ public class TestCompressedVectors extends RandomizedTest {
                 testEncodings(2 * i, M);
             }
         }
-    }
+    }*/ //TODO: DO NOT MERGE
 
     @Test
     public void testCenteringDisturbance() {

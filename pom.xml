@@ -116,12 +116,12 @@
                             <goal>aggregate-jar</goal>
                         </goals>
                         <configuration>
-                            <skippedModules>jvector-examples,jvector-tests</skippedModules>
+                            <skippedModules>jvector-examples,jvector-native,jvector-tests</skippedModules> <!--Do we need jvector-native?-->
                             <additionalJOptions>
                                 <additionalJOption>--add-modules=jdk.incubator.vector</additionalJOption>
                                 <additionalJOption>--enable-preview</additionalJOption>
                             </additionalJOptions>
-                            <release>20</release>
+                            <release>21</release>
                         </configuration>
                     </execution>
                 </executions>

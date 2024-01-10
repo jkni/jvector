@@ -15,7 +15,7 @@
  */
 
 package io.github.jbellis.jvector.microbench;
-
+/*
 
 import io.github.jbellis.jvector.vector.DefaultVectorizationProvider;
 import io.github.jbellis.jvector.vector.PanamaVectorizationProvider;
@@ -73,5 +73,5 @@ public class SimdBench {
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(args);
-    }*/
-}
+    }
+}*/
