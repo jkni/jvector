@@ -12,8 +12,8 @@
     <artifactId>jvector-tests</artifactId>
     <name>Tests</name>
     <properties>
-        <skipJdk11Tests>true</skipJdk11Tests>
-        <skipJdk20Tests>true</skipJdk20Tests>
+        <skipSIMD>true</skipSIMD>
+        <skipScalar>true</skipScalar>
     </properties>
     <build>
         <plugins>
@@ -85,7 +85,7 @@
                                 --add-modules jdk.incubator.vector
                                 --enable-preview
                             </argLine>
-                            <skip>${skipJdk20Tests}</skip>
+                            <skip>${skipSIMD}</skip>
                         </configuration>
                     </execution>
                     <execution>
@@ -94,7 +94,7 @@
                             <goal>test</goal>
                         </goals>
                         <configuration>
-                            <skip>${skipJdk11Tests}</skip>
+                            <skip>${skipScalar}</skip>
                         </configuration>
                     </execution>
                 </executions>
@@ -137,7 +137,7 @@
     </dependencies>
     <profiles>
         <profile>
-            <id>jdk20</id>
+            <id>jdk21</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
@@ -156,13 +156,27 @@
                 </dependency>
             </dependencies>
             <properties>
-                <skipJdk20Tests>false</skipJdk20Tests>
+                <skipSIMD>false</skipSIMD>
+            </properties>
+        </profile>
+        <profile>
+            <id>jdk20</id>
+            <dependencies>
+                <dependency>
+                    <groupId>io.github.jbellis</groupId>
+                    <artifactId>jvector-twenty</artifactId>
+                    <version>${project.version}</version>
+                    <scope>compile</scope>
+                </dependency>
+            </dependencies>
+            <properties>
+                <skipSIMD>false</skipSIMD>
             </properties>
         </profile>
         <profile>
             <id>jdk11</id>
             <properties>
-                <skipJdk11Tests>false</skipJdk11Tests>
+                <skipScalar>false</skipScalar>
             </properties>
         </profile>
     </profiles>
