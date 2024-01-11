@@ -102,10 +102,9 @@ public abstract class VectorizationProvider {
         return provider;
       } catch (UnsupportedOperationException uoe) {
         // not supported because preferred vector size too small or similar
-        LOG.warning("Java vector API was not enabled. " + uoe.getMessage());
-        return new DefaultVectorizationProvider();
+        LOG.warning("Native vector API was not enabled. " + uoe.getMessage());
       } catch (ClassNotFoundException e) {
-        LOG.warning("Java version does not support vector API");
+        LOG.warning("Java version does not support native vector API");
       } catch (Throwable th) {
         throw new AssertionError(th);
       }
