@@ -37,5 +37,20 @@
                 </fileSets>
             </sources>
         </moduleSet>
+        <moduleSet>
+            <useAllReactorProjects>true</useAllReactorProjects>
+            <includes>
+                <include>io.github.jbellis:jvector-native</include>
+            </includes>
+            <sources>
+                <includeModuleDirectory>false</includeModuleDirectory>
+                <fileSets>
+                    <fileSet>
+                        <outputDirectory>${module.artifactId}</outputDirectory>
+                        <directory>src/main/java</directory>
+                    </fileSet>
+                </fileSets>
+            </sources>
+        </moduleSet>
     </moduleSets>
 </assembly>

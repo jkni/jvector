@@ -116,7 +116,7 @@
                             <goal>aggregate-jar</goal>
                         </goals>
                         <configuration>
-                            <skippedModules>jvector-examples,jvector-native,jvector-tests</skippedModules> <!--Do we need jvector-native?-->
+                            <skippedModules>jvector-examples,jvector-tests</skippedModules>
                             <additionalJOptions>
                                 <additionalJOption>--add-modules=jdk.incubator.vector</additionalJOption>
                                 <additionalJOption>--enable-preview</additionalJOption>
