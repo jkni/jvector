@@ -16,17 +16,21 @@
 
 package io.github.jbellis.jvector.vector;
 
+import io.github.jbellis.jvector.vector.cnative.LibraryLoader;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
 public class NativeVectorizationProvider extends VectorizationProvider {
     static {
-        System.setProperty("jdk.incubator.vector.VECTOR_ACCESS_OOB_CHECK", "0");
     }
 
     private final VectorUtilSupport vectorUtilSupport;
     private final VectorTypeSupport vectorTypeSupport;
 
     public NativeVectorizationProvider() {
+        var libraryLoaded = LibraryLoader.loadJvector();
+        if (!libraryLoaded) {
+            throw new UnsupportedOperationException("Failed to load jvector native library");
+        }
         this.vectorUtilSupport = new NativeVectorUtilSupport();
         this.vectorTypeSupport = new OffHeapVectorProvider();
     }

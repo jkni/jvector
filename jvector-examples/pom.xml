@@ -255,6 +255,9 @@
                                         <argument>--enable-preview</argument>
                                         <argument>--enable-native-access=ALL-UNNAMED</argument>
                                         <argument>--add-modules=jdk.incubator.vector</argument>
+<!--
+                                        <argument>-Djava.library.path=jvector-native/src/main/resources</argument>
+-->
                                         <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
                                         <argument>-Xmx10G</argument>
                                         <argument>-ea</argument>

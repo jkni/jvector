@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-gcc -fPIC -O3 -march=native -shared -o libjvector.so jvector_simd.c
+gcc -fPIC -O3 -march=native -shared -o ../resources/libjvector.so jvector_simd.c
 
 # Generate Java source code
 # Should only be run when c header changes

@@ -25,6 +25,7 @@
 package io.github.jbellis.jvector.vector;
 
 import java.lang.Runtime.Version;
+import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
@@ -105,7 +106,18 @@ public abstract class VectorizationProvider {
         LOG.warning("Native vector API was not enabled. " + uoe.getMessage());
       } catch (ClassNotFoundException e) {
         LOG.warning("Java version does not support native vector API");
-      } catch (Throwable th) {
+      } catch (InvocationTargetException e) {
+        // unwrap, check for UnsupportedOperationException
+        if (e.getCause() instanceof UnsupportedOperationException) {
+          LOG.warning("Native vector API was not enabled. " + e.getCause().getMessage());
+        } else {
+          System.out.println("Got invocation exception, but it looks different");
+          System.out.println(e.getCause().toString());
+          throw new AssertionError(e);
+        }
+      }
+      catch (Throwable th) {
+        System.out.println("throwing assertion error");
         throw new AssertionError(th);
       }
 

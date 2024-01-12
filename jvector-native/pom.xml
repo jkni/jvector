@@ -26,6 +26,15 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
+            <!--Disable filtering for resources plugin-->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <nonFilteredFileExtensions>
+                        <nonFilteredFileExtension>so</nonFilteredFileExtension>
+                    </nonFilteredFileExtensions>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
     <dependencies>
