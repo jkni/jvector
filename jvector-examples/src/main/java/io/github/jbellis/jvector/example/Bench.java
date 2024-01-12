@@ -76,6 +76,7 @@ public class Bench {
                           M, efConstruction, (System.nanoTime() - start) / 1_000_000_000.0, onHeapGraph.getAverageDegree(), onHeapGraph.getAverageShortEdges());
 
         var graphPath = testDirectory.resolve("graph" + M + efConstruction + ds.name);
+        var fusedGraphPath = testDirectory.resolve("fusedgraph" + M + efConstruction + ds.name);
         try {
             for (var cf : compressionGrid) {
                 var compressor = getCompressor(cf, ds);
@@ -90,14 +91,19 @@ public class Bench {
                     start = System.nanoTime();
                     var quantizedVectors = compressor.encodeAll(ds.baseVectors);
                     cv = compressor.createCompressedVectors(quantizedVectors);
-                    try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(graphPath)))) {
-                        OnDiskFusedGraphIndex.write(onHeapGraph, floatVectors, (PQVectors) cv, outputStream);
-                    }
                     System.out.format("%s encoded %d vectors [%.2f MB] in %.2fs%n", compressor, ds.baseVectors.size(), (cv.ramBytesUsed() / 1024f / 1024f), (System.nanoTime() - start) / 1_000_000_000.0);
+                    try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(graphPath)))) {
+                        OnDiskGraphIndex.write(onHeapGraph, floatVectors, outputStream);
+                    }
+                    if (cv instanceof PQVectors) {
+                        try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(fusedGraphPath)))) {
+                            OnDiskFusedGraphIndex.write(onHeapGraph, floatVectors, (PQVectors) cv, outputStream);
+                        }
+                    }
                 }
 
-                try (var onDiskGraph = cv == null ? new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0)) :
-                        new CachingFusedGraphIndex(new OnDiskFusedGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0))) {
+                try (var onDiskGraph = new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0));
+                     var onDiskFusedGraph = cv instanceof PQVectors ? new CachingFusedGraphIndex(new OnDiskFusedGraphIndex<>(ReaderSupplierFactory.open(fusedGraphPath), 0)) : null) {
                     int queryRuns = 2;
                     for (int overquery : efSearchOptions) {
                         start = System.nanoTime();
@@ -108,6 +114,13 @@ public class Bench {
                             System.out.format("  Query %s top %d/%d recall %.4f in %.2fs after %,d nodes visited%n",
                                               "(memory)", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
                         }
+                        if (cv instanceof PQVectors) {
+                            // include both fused and regular graphs for PQ
+                            var pqr = performQueries(ds, floatVectors, cv, onDiskFusedGraph, topK, topK * overquery, queryRuns);
+                            var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
+                            System.out.format("  Query %s top %d/%d recall %.4f in %.2fs after %,d nodes visited%n",
+                                              "(fused)", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
+                        }
                         var pqr = performQueries(ds, floatVectors, cv, onDiskGraph, topK, topK * overquery, queryRuns);
                         var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
                         System.out.format("  Query %stop %d/%d recall %.4f in %.2fs after %,d nodes visited%n",
@@ -117,6 +130,7 @@ public class Bench {
             }
         } finally {
             Files.deleteIfExists(graphPath);
+            Files.deleteIfExists(fusedGraphPath);
         }
     }
 
@@ -168,10 +182,13 @@ public class Bench {
                 var queryVector = ds.queryVectors.get(i);
                 SearchResult sr;
                 if (cv != null) {
-                    var fgi = (CachingFusedGraphIndex) index;
                     var view = index.getView();
-                    NodeSimilarity.ApproximateScoreFunction sf = ((CachingFusedGraphIndex) index).approximateFusedScoreFunctionFor((PQVectors) cv, queryVector, ds.similarityFunction);
-                    //NodeSimilarity.ApproximateScoreFunction sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
+                    NodeSimilarity.ApproximateScoreFunction sf;
+                    if (index instanceof CachingFusedGraphIndex) {
+                        sf = ((CachingFusedGraphIndex) index).approximateFusedScoreFunctionFor((PQVectors) cv, queryVector, ds.similarityFunction);
+                    } else {
+                        sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
+                    }
                     NodeSimilarity.ReRanker rr = (j) -> ds.similarityFunction.compare(queryVector, exactVv.vectorValue(j));
                     sr = new GraphSearcher.Builder<>(view)
                             .build()
@@ -194,10 +211,10 @@ public class Bench {
 
         var mGrid = List.of(32); // List.of(16, 24, 32, 48, 64, 96, 128);
         var efConstructionGrid = List.of(100); // List.of(60, 80, 100, 120, 160, 200, 400, 600, 800);
-        var efSearchGrid = List.of(1, 2, 3, 4);
+        var efSearchGrid = List.of(1, 2);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
-                //null, // uncompressed
-                // ds -> BinaryQuantization.compute(ds.getBaseRavv()),
+                null, // uncompressed
+                ds -> BinaryQuantization.compute(ds.getBaseRavv()),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4,
                                                   ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
 
