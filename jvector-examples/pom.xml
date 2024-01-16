@@ -181,8 +181,12 @@
                                     <arguments>
                                         <argument>-classpath</argument>
                                         <classpath/>
+                                        <argument>--enable-preview</argument>
+                                        <argument>--enable-native-access=ALL-UNNAMED</argument>
                                         <argument>--add-modules=jdk.incubator.vector</argument>
+                                        <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
                                         <argument>-ea</argument>
+                                        <argument>-Djava.library.path=${project.build.directory}/../jvector-native/src/main/resources</argument>
                                         <argument>io.github.jbellis.jvector.example.IPCService</argument>
                                     </arguments>
                                 </configuration>
@@ -193,10 +197,14 @@
                                     <arguments>
                                         <argument>-classpath</argument>
                                         <classpath/>
+                                        <argument>--enable-preview</argument>
+                                        <argument>--enable-native-access=ALL-UNNAMED</argument>
                                         <argument>--add-modules=jdk.incubator.vector</argument>
+                                        <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
+                                        <argument>-Xmx10G</argument>
+                                        <argument>-ea</argument>
                                         <argument>-Djava.util.concurrent.ForkJoinPool.common.parallelism=1</argument>
                                         <argument>-Djvector.physical_core_count=1</argument>
-                                        <argument>-ea</argument>
                                         <argument>io.github.jbellis.jvector.example.IPCService</argument>
                                     </arguments>
                                 </configuration>
@@ -242,6 +250,7 @@
                                         <classpath/>
                                         <argument>--add-modules=jdk.incubator.vector</argument>
                                         <argument>-ea</argument>
+                                        <argument>-Djava.library.path=${project.build.directory}/../jvector-native/src/main/resources</argument>
                                         <argument>io.github.jbellis.jvector.example.SiftSmall</argument>
                                     </arguments>
                                 </configuration>
@@ -255,9 +264,7 @@
                                         <argument>--enable-preview</argument>
                                         <argument>--enable-native-access=ALL-UNNAMED</argument>
                                         <argument>--add-modules=jdk.incubator.vector</argument>
-<!--
-                                        <argument>-Djava.library.path=jvector-native/src/main/resources</argument>
--->
+                                        <argument>-Djava.library.path=${project.build.directory}/../jvector-native/src/main/resources</argument>
                                         <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
                                         <argument>-Xmx10G</argument>
                                         <argument>-ea</argument>
@@ -274,6 +281,7 @@
                                         <classpath/>
                                         <argument>--add-modules=jdk.incubator.vector</argument>
                                         <argument>-ea</argument>
+                                        <argument>-Djava.library.path=${project.build.directory}/../jvector-native/src/main/resources</argument>
                                         <argument>io.github.jbellis.jvector.example.IPCService</argument>
                                     </arguments>
                                 </configuration>
@@ -287,6 +295,7 @@
                                         <argument>--add-modules=jdk.incubator.vector</argument>
                                         <argument>-Djava.util.concurrent.ForkJoinPool.common.parallelism=1</argument>
                                         <argument>-Djvector.physical_core_count=1</argument>
+                                        <argument>-Djava.library.path=${project.build.directory}/../jvector-native/src/main/resources</argument>
                                         <argument>-ea</argument>
                                         <argument>io.github.jbellis.jvector.example.IPCService</argument>
                                     </arguments>

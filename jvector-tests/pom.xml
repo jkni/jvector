@@ -76,20 +76,21 @@
                 </dependencies>
                 <executions>
                     <execution>
-                        <id>jdk20</id>
+                        <id>simd</id>
                         <goals>
                             <goal>test</goal>
                         </goals>
                         <configuration>
                             <argLine>
                                 --add-modules jdk.incubator.vector
+                                -Djava.library.path=${project.build.directory}/../jvector-native/src/main/resources
                                 --enable-preview
                             </argLine>
                             <skip>${skipSIMD}</skip>
                         </configuration>
                     </execution>
                     <execution>
-                        <id>jdk11</id>
+                        <id>scalar</id>
                         <goals>
                             <goal>test</goal>
                         </goals>
