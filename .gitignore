@@ -4,6 +4,7 @@ target/
 
 ### IntelliJ IDEA ###
 .idea
+*.iml
 
 ### VS Code ###
 .vscode/
@@ -17,4 +18,4 @@ fvec/
 hdf5/
 
 ### Native libraries
-**/*.so
+*.so
