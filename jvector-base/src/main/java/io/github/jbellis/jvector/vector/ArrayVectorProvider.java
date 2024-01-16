@@ -78,7 +78,8 @@ public class ArrayVectorProvider implements VectorTypeSupport
 
     @Override
     public void readByteType(RandomAccessReader r, VectorByte<?> vector) throws IOException {
-        throw new UnsupportedOperationException();
+        ArrayVectorByte v = (ArrayVectorByte) vector;
+        r.readFully(v.get());
     }
 
     @Override

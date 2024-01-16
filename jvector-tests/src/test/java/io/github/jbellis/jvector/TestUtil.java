@@ -16,12 +16,14 @@
 
 package io.github.jbellis.jvector;
 
+import io.github.jbellis.jvector.disk.OnDiskFusedGraphIndex;
 import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndexBuilder;
 import io.github.jbellis.jvector.graph.NodesIterator;
 import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
+import io.github.jbellis.jvector.pq.PQVectors;
 import io.github.jbellis.jvector.vector.VectorUtil;
 import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
@@ -44,6 +46,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.getRandom;
 import static org.junit.Assert.assertEquals;
 
 public class TestUtil {
@@ -129,10 +132,22 @@ public class TestUtil {
         return bvec;
     }
 
+    public static List<VectorFloat<?>> createRandomVectors(int count, int dimension) {
+        return IntStream.range(0, count).mapToObj(i -> TestUtil.randomVector(getRandom(), dimension)).collect(Collectors.toList());
+    }
+
     public static <T> void writeGraph(GraphIndex<T> graph, RandomAccessVectorValues<T> vectors, Path outputPath) throws IOException {
         try (var out = openFileForWriting(outputPath))
         {
             OnDiskGraphIndex.write(graph, vectors, out);
+            out.flush();
+        }
+    }
+
+    public static <T> void writeFusedGraph(GraphIndex<T> graph, RandomAccessVectorValues<T> vectors, PQVectors pq, Path outputPath) throws IOException {
+        try (var out = openFileForWriting(outputPath))
+        {
+            OnDiskFusedGraphIndex.write(graph, vectors, pq, out);
             out.flush();
         }
     }

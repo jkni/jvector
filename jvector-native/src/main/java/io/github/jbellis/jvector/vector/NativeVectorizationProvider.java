@@ -29,7 +29,7 @@ public class NativeVectorizationProvider extends VectorizationProvider {
     public NativeVectorizationProvider() {
         var libraryLoaded = LibraryLoader.loadJvector();
         if (!libraryLoaded) {
-            throw new UnsupportedOperationException("Failed to load jvector native library");
+            throw new UnsupportedOperationException("Failed to load supporting native library.");
         }
         this.vectorUtilSupport = new NativeVectorUtilSupport();
         this.vectorTypeSupport = new OffHeapVectorProvider();

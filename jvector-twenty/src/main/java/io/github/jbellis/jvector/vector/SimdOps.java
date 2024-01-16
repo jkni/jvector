@@ -679,7 +679,7 @@ final class SimdOps {
     public static void bulkShuffleSimilarity(ArrayVectorByte shuffles, int codebookCount, ArrayVectorFloat tlPartials, ArrayVectorFloat results, VectorSimilarityFunction vsf) {
         // 32 is from neighbor count
         // 16 is from CLUSTERS
-        var tmpLeft = FloatVector.zero(FloatVector.SPECIES_512);
+        /*var tmpLeft = FloatVector.zero(FloatVector.SPECIES_512);
         var tmpRight = FloatVector.zero(FloatVector.SPECIES_512);
         var intShuffles = new int[shuffles.length()];
         for (int i = 0; i < shuffles.length(); i++) {
@@ -711,6 +711,24 @@ final class SimdOps {
         }
 
         tmpLeft.intoArray(results.get(), 0);
-        tmpRight.intoArray(results.get(), 16);
+        tmpRight.intoArray(results.get(), 16);*/
+        for (int i = 0; i < codebookCount; i++) {
+            for (int j = 0; j < 32; j++) {
+                results.set(j, results.get(j) + tlPartials.get(i * 32 + shuffles.get(i * 32 + j)));
+            }
+        }
+
+        for (int i = 0; i < results.length(); i++) {
+            switch (vsf) {
+                case EUCLIDEAN:
+                    results.set(i, 1 / (1 + results.get(i)));
+                    break;
+                case DOT_PRODUCT:
+                    results.set(i, (results.get(i) + 1) / 2);
+                    break;
+                default:
+                    throw new UnsupportedOperationException("Unsupported similarity function " + vsf);
+            }
+        }
     }
 }
