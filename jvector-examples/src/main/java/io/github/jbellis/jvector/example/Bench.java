@@ -16,7 +16,7 @@
 
 package io.github.jbellis.jvector.example;
 
-import io.github.jbellis.jvector.disk.CachingFusedGraphIndex;
+import io.github.jbellis.jvector.pq.CachingADCGraphIndex;
 import io.github.jbellis.jvector.disk.CachingGraphIndex;
 import io.github.jbellis.jvector.pq.OnDiskADCGraphIndex;
 import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
@@ -104,7 +104,7 @@ public class Bench {
                 }
 
                 try (var onDiskGraph = new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0));
-                     var onDiskFusedGraph = fusedCompatible ? new CachingFusedGraphIndex(new OnDiskADCGraphIndex<>(ReaderSupplierFactory.open(fusedGraphPath), 0)) : null) {
+                     var onDiskFusedGraph = fusedCompatible ? new CachingADCGraphIndex(new OnDiskADCGraphIndex<>(ReaderSupplierFactory.open(fusedGraphPath), 0)) : null) {
                     int queryRuns = 2;
                     for (int overquery : efSearchOptions) {
                         start = System.nanoTime();
@@ -185,8 +185,8 @@ public class Bench {
                 if (cv != null) {
                     var view = index.getView();
                     NodeSimilarity.ApproximateScoreFunction sf;
-                    if (index instanceof CachingFusedGraphIndex) {
-                        sf = ((CachingFusedGraphIndex) index).approximateFusedScoreFunctionFor(queryVector, ds.similarityFunction);
+                    if (index instanceof CachingADCGraphIndex) {
+                        sf = ((CachingADCGraphIndex) index).approximateScoreFunctionFor(queryVector, ds.similarityFunction);
                     } else {
                         sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
                     }

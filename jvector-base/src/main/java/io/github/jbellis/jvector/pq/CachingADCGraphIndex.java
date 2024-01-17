@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.jbellis.jvector.disk;
+package io.github.jbellis.jvector.pq;
 
-import io.github.jbellis.jvector.graph.FusedGraphIndex;
+import io.github.jbellis.jvector.graph.ApproximateScoreProvider;
+import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.graph.NodesIterator;
-import io.github.jbellis.jvector.pq.OnDiskADCGraphIndex;
-import io.github.jbellis.jvector.pq.PQVectors;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
@@ -30,18 +29,18 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
-public class CachingFusedGraphIndex implements FusedGraphIndex<VectorFloat<?>>, AutoCloseable, Accountable
+public class CachingADCGraphIndex implements GraphIndex<VectorFloat<?>>, AutoCloseable, Accountable, ApproximateScoreProvider
 {
     private static final int CACHE_DISTANCE = 3;
 
-    private final FusedGraphCache cache;
+    private final ADCGraphCache cache;
     private final OnDiskADCGraphIndex<VectorFloat<?>> graph;
 
-    public CachingFusedGraphIndex(OnDiskADCGraphIndex<VectorFloat<?>> graph)
+    public CachingADCGraphIndex(OnDiskADCGraphIndex<VectorFloat<?>> graph)
     {
         this.graph = graph;
         try {
-            this.cache = FusedGraphCache.load(graph, CACHE_DISTANCE);
+            this.cache = ADCGraphCache.load(graph, CACHE_DISTANCE);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -78,8 +77,8 @@ public class CachingFusedGraphIndex implements FusedGraphIndex<VectorFloat<?>>, 
     }
 
     @Override
-    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(VectorFloat<?> query, VectorSimilarityFunction similarityFunction) {
-        return graph.approximateFusedScoreFunctionFor(query, similarityFunction);
+    public NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(VectorFloat<?> query, VectorSimilarityFunction similarityFunction) {
+        return graph.approximateScoreFunctionFor(query, similarityFunction);
     }
 
     public class CachedView implements View<VectorFloat<?>> {

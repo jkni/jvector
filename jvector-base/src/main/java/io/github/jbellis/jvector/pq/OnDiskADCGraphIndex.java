@@ -36,7 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable, Accountable
+public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accountable, ApproximateScoreProvider
 {
     private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     private final ReaderSupplier readerSupplier;
@@ -104,7 +104,7 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
         return new OnDiskView(readerSupplier.get());
     }
 
-    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(T query, VectorSimilarityFunction similarityFunction) {
+    public NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(VectorFloat<?> query, VectorSimilarityFunction similarityFunction) {
         switch (similarityFunction) {
             case DOT_PRODUCT:
                 return new QuickADCPQDecoder.DotProductDecoder((OnDiskADCGraphIndex<VectorFloat<?>>) this, (VectorFloat<?>) query);

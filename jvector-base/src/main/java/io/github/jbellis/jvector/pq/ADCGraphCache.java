@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.github.jbellis.jvector.disk;
+package io.github.jbellis.jvector.pq;
 
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.util.Accountable;
@@ -25,9 +25,8 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class FusedGraphCache implements Accountable
+public abstract class ADCGraphCache implements Accountable
 {
     public static final class CachedNode {
         public final VectorFloat<?> vector;
@@ -44,7 +43,7 @@ public abstract class FusedGraphCache implements Accountable
     /** return the cached node if present, or null if not */
     public abstract CachedNode getNode(int ordinal);
 
-    public static FusedGraphCache load(GraphIndex<VectorFloat<?>> graph, int distance) throws IOException
+    public static ADCGraphCache load(GraphIndex<VectorFloat<?>> graph, int distance) throws IOException
     {
         if (distance < 0)
             return new EmptyGraphCache();
@@ -53,7 +52,7 @@ public abstract class FusedGraphCache implements Accountable
 
     public abstract long ramBytesUsed();
 
-    private static final class EmptyGraphCache extends FusedGraphCache
+    private static final class EmptyGraphCache extends ADCGraphCache
     {
         @Override
         public CachedNode getNode(int ordinal) {
@@ -67,14 +66,14 @@ public abstract class FusedGraphCache implements Accountable
         }
     }
 
-    private static final class HMGraphCache extends FusedGraphCache
+    private static final class HMGraphCache extends ADCGraphCache
     {
         private final Map<Integer, CachedNode> cache;
         private long ramBytesUsed = 0;
 
         public HMGraphCache(GraphIndex<VectorFloat<?>> graph, int distance) {
             var view = graph.getView();
-            HashMap<Integer, FusedGraphCache.CachedNode> tmpCache = new HashMap<>();
+            HashMap<Integer, ADCGraphCache.CachedNode> tmpCache = new HashMap<>();
             cacheNeighborsOf(tmpCache, view, view.entryNode(), distance);
             // Assigning to a final value ensure it is safely published
             cache = tmpCache;

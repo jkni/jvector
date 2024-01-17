@@ -4,6 +4,7 @@ import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
 import io.github.jbellis.jvector.TestUtil;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
+import io.github.jbellis.jvector.pq.CachingADCGraphIndex;
 import io.github.jbellis.jvector.pq.OnDiskADCGraphIndex;
 import io.github.jbellis.jvector.pq.PQVectors;
 import io.github.jbellis.jvector.pq.ProductQuantization;
@@ -53,14 +54,14 @@ public class TestOnDiskADCGraphIndex extends RandomizedTest {
 
         try (var marr = new SimpleMappedReader(outputPath.toAbsolutePath().toString());
              var onDiskGraph = new OnDiskADCGraphIndex<VectorFloat<?>>(marr::duplicate, 0);
-             var cachedOnDiskGraph = new CachingFusedGraphIndex(onDiskGraph))
+             var cachedOnDiskGraph = new CachingADCGraphIndex(onDiskGraph))
         {
             TestUtil.assertGraphEquals(graph, onDiskGraph);
             TestUtil.assertGraphEquals(graph, cachedOnDiskGraph);
             try (var cachedOnDiskView = cachedOnDiskGraph.getView())
             {
                 var queryVector = TestUtil.randomVector(getRandom(), 256);
-                var fusedScoreFunction = cachedOnDiskGraph.approximateFusedScoreFunctionFor(pqv, queryVector, VectorSimilarityFunction.DOT_PRODUCT);
+                var fusedScoreFunction = cachedOnDiskGraph.approximateScoreFunctionFor(queryVector, VectorSimilarityFunction.DOT_PRODUCT);
                 var scoreFunction = pqv.approximateScoreFunctionFor(queryVector, VectorSimilarityFunction.DOT_PRODUCT);
                 for (int i = 0; i < 100_000; i++) {
                     var bulkSimilarities = fusedScoreFunction.bulkSimilarityTo(i);
