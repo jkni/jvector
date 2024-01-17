@@ -31,13 +31,12 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-public class OnDiskFusedGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable, Accountable
+public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable, Accountable
 {
     private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     private final ReaderSupplier readerSupplier;
@@ -48,7 +47,7 @@ public class OnDiskFusedGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseab
     private final int dimension;
     private final int subspaceCount;
 
-    public OnDiskFusedGraphIndex(ReaderSupplier readerSupplier, long offset)
+    public OnDiskADCGraphIndex(ReaderSupplier readerSupplier, long offset)
     {
         this.readerSupplier = readerSupplier;
         this.neighborsOffset = offset + 5 * Integer.BYTES;
@@ -60,7 +59,7 @@ public class OnDiskFusedGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseab
             maxDegree = reader.readInt();
             subspaceCount = reader.readInt();
         } catch (Exception e) {
-            throw new RuntimeException("Error initializing OnDiskGraph at offset " + offset, e);
+            throw new RuntimeException("Error initializing OnDiskADCGraphIndex at offset " + offset, e);
         }
     }
 
@@ -95,7 +94,7 @@ public class OnDiskFusedGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseab
     }
 
     /** return a Graph that can be safely queried concurrently */
-    public OnDiskFusedGraphIndex<T>.OnDiskView getView()
+    public OnDiskADCGraphIndex<T>.OnDiskView getView()
     {
         return new OnDiskView(readerSupplier.get());
     }
@@ -103,9 +102,9 @@ public class OnDiskFusedGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseab
     public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(PQVectors pq, T query, VectorSimilarityFunction similarityFunction) {
         switch (similarityFunction) {
             case DOT_PRODUCT:
-                return new FusedPQDecoder.DotProductDecoder((OnDiskFusedGraphIndex<VectorFloat<?>>) this, pq, (VectorFloat<?>) query);
+                return new FusedPQDecoder.DotProductDecoder((OnDiskADCGraphIndex<VectorFloat<?>>) this, pq, (VectorFloat<?>) query);
             case EUCLIDEAN:
-                return new FusedPQDecoder.EuclideanDecoder((OnDiskFusedGraphIndex<VectorFloat<?>>) this, pq, (VectorFloat<?>) query);
+                return new FusedPQDecoder.EuclideanDecoder((OnDiskADCGraphIndex<VectorFloat<?>>) this, pq, (VectorFloat<?>) query);
             default:
                 throw new IllegalArgumentException("Unsupported similarity function " + similarityFunction);
         }
@@ -169,12 +168,12 @@ public class OnDiskFusedGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseab
 
         @Override
         public int size() {
-            return OnDiskFusedGraphIndex.this.size();
+            return OnDiskADCGraphIndex.this.size();
         }
 
         @Override
         public int entryNode() {
-            return OnDiskFusedGraphIndex.this.entryNode;
+            return OnDiskADCGraphIndex.this.entryNode;
         }
 
         @Override
@@ -229,6 +228,9 @@ public class OnDiskFusedGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseab
      * @param oldToNewOrdinals A map from old to new ordinals. If ordinal numbering does not matter,
      *                         you can use `getSequentialRenumbering`, which will "fill in" holes left by
      *                         any deleted nodes.
+     * @param pq the ProductQuantization used to compress the vectors in `vectors, along with their
+     *           compressed representation. These compressed representations are embedded in the serialized
+     *           graph to support accelerated ADC.
      * @param out the output to write to
      */
     public static <T> void write(GraphIndex<T> graph,

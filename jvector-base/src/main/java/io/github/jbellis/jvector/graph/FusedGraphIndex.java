@@ -20,6 +20,10 @@ import io.github.jbellis.jvector.pq.PQVectors;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 
+/**
+ * Interface for graph index that additionally supports approximate similarity search.
+ * @param <T>
+ */
 public interface FusedGraphIndex<T> extends GraphIndex<T> {
     public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(PQVectors pq, T query, VectorSimilarityFunction similarityFunction);
 }

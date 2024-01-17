@@ -15,8 +15,7 @@
  */
 package io.github.jbellis.jvector.pq;
 
-import io.github.jbellis.jvector.disk.CachingFusedGraphIndex;
-import io.github.jbellis.jvector.disk.OnDiskFusedGraphIndex;
+import io.github.jbellis.jvector.disk.OnDiskADCGraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
@@ -82,7 +81,7 @@ public abstract class FusedPQDecoder implements NodeSimilarity.ApproximateScoreF
     public static class DotProductDecoder extends CachingDecoder {
         private final GraphIndex.View<VectorFloat<?>> fgi;
         private final VectorFloat<?> results;
-        public DotProductDecoder(OnDiskFusedGraphIndex<VectorFloat<?>> fgi, PQVectors cv, VectorFloat<?> query) {
+        public DotProductDecoder(OnDiskADCGraphIndex<VectorFloat<?>> fgi, PQVectors cv, VectorFloat<?> query) {
             super(cv, query, VectorSimilarityFunction.DOT_PRODUCT);
             this.fgi = fgi.getView();
             this.results = vectorTypeSupport.createFloatType(fgi.maxDegree());
@@ -111,7 +110,7 @@ public abstract class FusedPQDecoder implements NodeSimilarity.ApproximateScoreF
         private final GraphIndex.View<VectorFloat<?>> fgi;
         private final VectorFloat<?> results;
 
-        public EuclideanDecoder(OnDiskFusedGraphIndex<VectorFloat<?>> fgi, PQVectors cv, VectorFloat<?> query) {
+        public EuclideanDecoder(OnDiskADCGraphIndex<VectorFloat<?>> fgi, PQVectors cv, VectorFloat<?> query) {
             super(cv, query, VectorSimilarityFunction.EUCLIDEAN);
             this.fgi = fgi.getView();
             this.results = vectorTypeSupport.createFloatType(fgi.maxDegree());

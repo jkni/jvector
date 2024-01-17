@@ -18,7 +18,7 @@ package io.github.jbellis.jvector.example;
 
 import io.github.jbellis.jvector.disk.CachingFusedGraphIndex;
 import io.github.jbellis.jvector.disk.CachingGraphIndex;
-import io.github.jbellis.jvector.disk.OnDiskFusedGraphIndex;
+import io.github.jbellis.jvector.disk.OnDiskADCGraphIndex;
 import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.example.util.DataSet;
 import io.github.jbellis.jvector.example.util.DataSetCreator;
@@ -98,13 +98,13 @@ public class Bench {
                     }
                     if (fusedCompatible) {
                         try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(fusedGraphPath)))) {
-                            OnDiskFusedGraphIndex.write(onHeapGraph, floatVectors, (PQVectors) cv, outputStream);
+                            OnDiskADCGraphIndex.write(onHeapGraph, floatVectors, (PQVectors) cv, outputStream);
                         }
                     }
                 }
 
                 try (var onDiskGraph = new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0));
-                     var onDiskFusedGraph = fusedCompatible ? new CachingFusedGraphIndex(new OnDiskFusedGraphIndex<>(ReaderSupplierFactory.open(fusedGraphPath), 0)) : null) {
+                     var onDiskFusedGraph = fusedCompatible ? new CachingFusedGraphIndex(new OnDiskADCGraphIndex<>(ReaderSupplierFactory.open(fusedGraphPath), 0)) : null) {
                     int queryRuns = 2;
                     for (int overquery : efSearchOptions) {
                         start = System.nanoTime();

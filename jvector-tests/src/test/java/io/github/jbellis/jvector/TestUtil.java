@@ -16,7 +16,7 @@
 
 package io.github.jbellis.jvector;
 
-import io.github.jbellis.jvector.disk.OnDiskFusedGraphIndex;
+import io.github.jbellis.jvector.disk.OnDiskADCGraphIndex;
 import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndexBuilder;
@@ -41,7 +41,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -147,7 +146,7 @@ public class TestUtil {
     public static <T> void writeFusedGraph(GraphIndex<T> graph, RandomAccessVectorValues<T> vectors, PQVectors pq, Path outputPath) throws IOException {
         try (var out = openFileForWriting(outputPath))
         {
-            OnDiskFusedGraphIndex.write(graph, vectors, pq, out);
+            OnDiskADCGraphIndex.write(graph, vectors, pq, out);
             out.flush();
         }
     }

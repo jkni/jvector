@@ -20,7 +20,7 @@ import static io.github.jbellis.jvector.TestUtil.createRandomVectors;
 import static org.junit.Assert.assertEquals;
 
 @ThreadLeakScope(ThreadLeakScope.Scope.NONE)
-public class TestOnDiskFusedGraphIndex extends RandomizedTest {
+public class TestOnDiskADCGraphIndex extends RandomizedTest {
 
     private Path testDirectory;
 
@@ -51,7 +51,7 @@ public class TestOnDiskFusedGraphIndex extends RandomizedTest {
         TestUtil.writeFusedGraph(graph, ravv, pqv, outputPath);
 
         try (var marr = new SimpleMappedReader(outputPath.toAbsolutePath().toString());
-             var onDiskGraph = new OnDiskFusedGraphIndex<VectorFloat<?>>(marr::duplicate, 0);
+             var onDiskGraph = new OnDiskADCGraphIndex<VectorFloat<?>>(marr::duplicate, 0);
              var cachedOnDiskGraph = new CachingFusedGraphIndex(onDiskGraph))
         {
             TestUtil.assertGraphEquals(graph, onDiskGraph);

@@ -17,7 +17,6 @@
 package io.github.jbellis.jvector.disk;
 
 import io.github.jbellis.jvector.graph.FusedGraphIndex;
-import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.graph.NodesIterator;
 import io.github.jbellis.jvector.pq.PQVectors;
@@ -35,9 +34,9 @@ public class CachingFusedGraphIndex implements FusedGraphIndex<VectorFloat<?>>, 
     private static final int CACHE_DISTANCE = 3;
 
     private final FusedGraphCache cache;
-    private final OnDiskFusedGraphIndex<VectorFloat<?>> graph;
+    private final OnDiskADCGraphIndex<VectorFloat<?>> graph;
 
-    public CachingFusedGraphIndex(OnDiskFusedGraphIndex<VectorFloat<?>> graph)
+    public CachingFusedGraphIndex(OnDiskADCGraphIndex<VectorFloat<?>> graph)
     {
         this.graph = graph;
         try {
