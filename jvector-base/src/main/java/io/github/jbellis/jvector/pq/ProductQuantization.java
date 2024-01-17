@@ -48,12 +48,13 @@ import static java.lang.Math.min;
  */
 public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
     private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
-    static final int CLUSTERS = 32; // number of clusters per subspace = one byte's worth
+    static final int DEFAULT_CLUSTERS = 256; // number of clusters per subspace = one byte's worth
     static final int K_MEANS_ITERATIONS = 6;
     static final int MAX_PQ_TRAINING_SET_SIZE = 128000;
 
     final VectorFloat<?>[][] codebooks;
     private final int M; // codebooks.length, redundantly reproduced for convenience
+    private final int clusterCount; // codebooks[0].length, redundantly reproduced for convenience
     final int originalDimension;
     private final VectorFloat<?> globalCentroid;
     final int[][] subvectorSizesAndOffsets;
@@ -63,11 +64,24 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
      *
      * @param ravv the vectors to quantize
      * @param M number of subspaces
+     * @param clusterCount number of clusters per subspace
+     * @param globallyCenter whether to center the vectors globally before quantization
+     *                       (not recommended when using the quantization for dot product)
+     */
+    public static ProductQuantization compute(RandomAccessVectorValues<VectorFloat<?>> ravv, int M, int clusterCount, boolean globallyCenter) {
+        return compute(ravv, M, clusterCount, globallyCenter, PhysicalCoreExecutor.pool(), ForkJoinPool.commonPool());
+    }
+
+    /**
+     * Initializes the codebooks by clustering the input data using Product Quantization. Defaults to 256 clusters per subspace.
+     *
+     * @param ravv the vectors to quantize
+     * @param M number of subspaces
      * @param globallyCenter whether to center the vectors globally before quantization
      *                       (not recommended when using the quantization for dot product)
      */
     public static ProductQuantization compute(RandomAccessVectorValues<VectorFloat<?>> ravv, int M, boolean globallyCenter) {
-        return compute(ravv, M, globallyCenter, PhysicalCoreExecutor.pool(), ForkJoinPool.commonPool());
+        return compute(ravv, M, DEFAULT_CLUSTERS, globallyCenter);
     }
 
     /**
@@ -75,6 +89,7 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
      *
      * @param ravv the vectors to quantize
      * @param M number of subspaces
+     * @param clusterCount number of clusters per subspace
      * @param globallyCenter whether to center the vectors globally before quantization
      *                       (not recommended when using the quantization for dot product)
      * @param simdExecutor     ForkJoinPool instance for SIMD operations, best is to use a pool with the size of
@@ -84,6 +99,7 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
     public static ProductQuantization compute(
             RandomAccessVectorValues<VectorFloat<?>> ravv,
             int M,
+            int clusterCount,
             boolean globallyCenter,
             ForkJoinPool simdExecutor,
             ForkJoinPool parallelExecutor) {
@@ -115,7 +131,7 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
         }
 
         // derive the codebooks
-        var codebooks = createCodebooks(vectors, M, subvectorSizesAndOffsets, simdExecutor);
+        var codebooks = createCodebooks(vectors, M, subvectorSizesAndOffsets, clusterCount, simdExecutor);
         return new ProductQuantization(codebooks, globalCentroid);
     }
 
@@ -124,6 +140,7 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
         this.codebooks = codebooks;
         this.globalCentroid = globalCentroid;
         this.M = codebooks.length;
+        this.clusterCount = codebooks[0].length;
         this.subvectorSizesAndOffsets = new int[M][];
         int offset = 0;
         for (int i = 0; i < M; i++) {
@@ -196,6 +213,14 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
         return M;
     }
 
+
+    /**
+     * @return number of clusters per subspace
+     */
+    public int getClusterCount() {
+        return clusterCount;
+    }
+
     // for testing
     static void printCodebooks(List<List<float[]>> codebooks) {
         List<List<String>> strings = codebooks.stream()
@@ -218,13 +243,13 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
         return "[" + String.join(", ", b) + "]";
     }
 
-    static VectorFloat<?>[][] createCodebooks(List<VectorFloat<?>> vectors, int M, int[][] subvectorSizeAndOffset, ForkJoinPool simdExecutor) {
+    static VectorFloat<?>[][] createCodebooks(List<VectorFloat<?>> vectors, int M, int[][] subvectorSizeAndOffset, int clusters, ForkJoinPool simdExecutor) {
         return simdExecutor.submit(() -> IntStream.range(0, M).parallel()
                 .mapToObj(m -> {
                     VectorFloat<?>[] subvectors = vectors.stream().parallel()
                             .map(vector -> getSubVector(vector, m, subvectorSizeAndOffset))
                             .toArray(VectorFloat<?>[]::new);
-                    var clusterer = new KMeansPlusPlusClusterer(subvectors, CLUSTERS, VectorUtil::squareDistance);
+                    var clusterer = new KMeansPlusPlusClusterer(subvectors, clusters, VectorUtil::squareDistance);
                     return clusterer.cluster(K_MEANS_ITERATIONS);
                 })
                 .toArray(VectorFloat<?>[][]::new))
@@ -287,7 +312,7 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
         }
 
         assert codebooks.length == M;
-        assert codebooks[0].length == CLUSTERS;
+        assert codebooks[0].length == clusterCount;
         out.writeInt(codebooks[0].length);
         for (var codebook : codebooks) {
             for (var centroid : codebook) {
@@ -366,6 +391,6 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
 
     @Override
     public String toString() {
-        return String.format("ProductQuantization(%s)", M);
+        return String.format("ProductQuantization(%s,%s)", M, clusterCount);
     }
 }

@@ -44,7 +44,7 @@ public class TestOnDiskFusedGraphIndex extends RandomizedTest {
         var outputPath = testDirectory.resolve("large_graph");
         var vectors = createRandomVectors(100_000, 256);
         var ravv = new ListRandomAccessVectorValues(vectors, 256);
-        var pq = ProductQuantization.compute(ravv, 64, false);
+        var pq = ProductQuantization.compute(ravv, 64, 32, false);
         var compressed = pq.encodeAll(vectors);
         var pqv = new PQVectors(pq, compressed);
 

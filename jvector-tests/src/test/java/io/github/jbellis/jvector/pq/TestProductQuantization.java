@@ -43,7 +43,7 @@ public class TestProductQuantization extends RandomizedTest {
     private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     @Test
     public void testPerfectReconstruction() {
-        var vectors = IntStream.range(0,ProductQuantization.CLUSTERS).mapToObj(
+        var vectors = IntStream.range(0, ProductQuantization.DEFAULT_CLUSTERS).mapToObj(
                 i -> vectorTypeSupport.createFloatType(new float[] {getRandom().nextInt(100000), getRandom().nextInt(100000), getRandom().nextInt(100000) }))
                 .collect(Collectors.<VectorFloat<?>>toList());
         var ravv = new ListRandomAccessVectorValues(vectors, 3);

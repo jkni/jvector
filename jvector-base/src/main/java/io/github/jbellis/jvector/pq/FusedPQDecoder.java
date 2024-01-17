@@ -51,8 +51,8 @@ public abstract class FusedPQDecoder implements NodeSimilarity.ApproximateScoreF
             //int[] indexCounts = new int[128];
             for (var i = 0; i < pq.getSubspaceCount(); i++) {
                 int offset = pq.subvectorSizesAndOffsets[i][1];
-                int baseOffset = i * ProductQuantization.CLUSTERS;
-                for (var j = 0; j < ProductQuantization.CLUSTERS; j++) {
+                int baseOffset = i * cv.pq.getClusterCount();
+                for (var j = 0; j < cv.pq.getClusterCount(); j++) {
                     VectorFloat<?> centroidSubvector = pq.codebooks[i][j];
                     switch (vsf) {
                         case DOT_PRODUCT:
@@ -75,7 +75,7 @@ public abstract class FusedPQDecoder implements NodeSimilarity.ApproximateScoreF
         }
 
         protected float decodedSimilarity(VectorByte<?> encoded) {
-            return VectorUtil.assembleAndSum(partialSums, ProductQuantization.CLUSTERS, encoded);
+            return VectorUtil.assembleAndSum(partialSums, cv.pq.getClusterCount(), encoded);
         }
     }
 
@@ -155,10 +155,10 @@ public abstract class FusedPQDecoder implements NodeSimilarity.ApproximateScoreF
 
             for (int m = 0; m < pq.getSubspaceCount(); ++m) {
                 int offset = pq.subvectorSizesAndOffsets[m][1];
-                for (int j = 0; j < ProductQuantization.CLUSTERS; ++j) {
+                for (int j = 0; j < pq.getClusterCount(); ++j) {
                     VectorFloat<?> centroidSubvector = pq.codebooks[m][j];
-                    partialSums.set((m * ProductQuantization.CLUSTERS) + j, VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length()));
-                    aMagnitude.set((m * ProductQuantization.CLUSTERS) + j, VectorUtil.dotProduct(centroidSubvector, 0, centroidSubvector, 0, centroidSubvector.length()));
+                    partialSums.set((m * pq.getClusterCount()) + j, VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length()));
+                    aMagnitude.set((m * pq.getClusterCount()) + j, VectorUtil.dotProduct(centroidSubvector, 0, centroidSubvector, 0, centroidSubvector.length()));
                 }
 
                 bMagSum += VectorUtil.dotProduct(centeredQuery, offset, centeredQuery, offset, pq.subvectorSizesAndOffsets[m][0]);
@@ -180,8 +180,8 @@ public abstract class FusedPQDecoder implements NodeSimilarity.ApproximateScoreF
 
             for (int m = 0; m < encoded.length(); ++m) {
                 int centroidIndex = Byte.toUnsignedInt(encoded.get(m));
-                sum += partialSums.get((m * ProductQuantization.CLUSTERS) + centroidIndex);
-                aMag += aMagnitude.get((m * ProductQuantization.CLUSTERS) + centroidIndex);
+                sum += partialSums.get((m * cv.pq.getClusterCount()) + centroidIndex);
+                aMag += aMagnitude.get((m * cv.pq.getClusterCount()) + centroidIndex);
             }
 
             return (float) (sum / Math.sqrt(aMag * bMagnitude));

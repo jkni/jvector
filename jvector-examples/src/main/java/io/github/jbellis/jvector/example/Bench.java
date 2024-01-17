@@ -81,6 +81,7 @@ public class Bench {
             for (var cf : compressionGrid) {
                 var compressor = getCompressor(cf, ds);
                 CompressedVectors cv;
+                var fusedCompatible = compressor instanceof ProductQuantization && ((ProductQuantization) compressor).getClusterCount() == 32;
                 if (compressor == null) {
                     cv = null;
                     try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(graphPath)))) {
@@ -95,7 +96,7 @@ public class Bench {
                     try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(graphPath)))) {
                         OnDiskGraphIndex.write(onHeapGraph, floatVectors, outputStream);
                     }
-                    if (cv instanceof PQVectors) {
+                    if (fusedCompatible) {
                         try (var outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(fusedGraphPath)))) {
                             OnDiskFusedGraphIndex.write(onHeapGraph, floatVectors, (PQVectors) cv, outputStream);
                         }
@@ -103,7 +104,7 @@ public class Bench {
                 }
 
                 try (var onDiskGraph = new CachingGraphIndex(new OnDiskGraphIndex<>(ReaderSupplierFactory.open(graphPath), 0));
-                     var onDiskFusedGraph = cv instanceof PQVectors ? new CachingFusedGraphIndex(new OnDiskFusedGraphIndex<>(ReaderSupplierFactory.open(fusedGraphPath), 0)) : null) {
+                     var onDiskFusedGraph = fusedCompatible ? new CachingFusedGraphIndex(new OnDiskFusedGraphIndex<>(ReaderSupplierFactory.open(fusedGraphPath), 0)) : null) {
                     int queryRuns = 2;
                     for (int overquery : efSearchOptions) {
                         start = System.nanoTime();
@@ -114,8 +115,8 @@ public class Bench {
                             System.out.format("  Query %s top %d/%d recall %.4f in %.2fs after %,d nodes visited%n",
                                               "(memory)", topK, overquery, recall, (System.nanoTime() - start) / 1_000_000_000.0, pqr.nodesVisited);
                         }
-                        if (cv instanceof PQVectors) {
-                            // include both fused and regular graphs for PQ
+                        if (fusedCompatible) {
+                            // include both fused and regular graphs for PQ if clusters == 32
                             var pqr = performQueries(ds, floatVectors, cv, onDiskFusedGraph, topK, topK * overquery, queryRuns);
                             var recall = ((double) pqr.topKFound) / (queryRuns * ds.queryVectors.size() * topK);
                             System.out.format("  Query %s top %d/%d recall %.4f in %.2fs after %,d nodes visited%n",
@@ -215,8 +216,10 @@ public class Bench {
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
                 null, // uncompressed
                 ds -> BinaryQuantization.compute(ds.getBaseRavv()),
+                ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, 32,
+                                                  ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4,
-                                                  ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
+                        ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
 
         // args is list of regexes, possibly needing to be split by whitespace.
         // generate a regex that matches any regex in args, or if args is empty/null, match everything

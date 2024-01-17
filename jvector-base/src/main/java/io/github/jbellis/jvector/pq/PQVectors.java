@@ -42,8 +42,8 @@ public class PQVectors implements CompressedVectors {
     {
         this.pq = pq;
         this.compressedVectors = compressedVectors;
-        this.partialSums = ThreadLocal.withInitial(() -> vectorTypeSupport.createFloatType(pq.getSubspaceCount() * ProductQuantization.CLUSTERS));
-        this.partialMagnitudes = ThreadLocal.withInitial(() -> vectorTypeSupport.createFloatType(pq.getSubspaceCount() * ProductQuantization.CLUSTERS));
+        this.partialSums = ThreadLocal.withInitial(() -> vectorTypeSupport.createFloatType(pq.getSubspaceCount() * pq.getClusterCount()));
+        this.partialMagnitudes = ThreadLocal.withInitial(() -> vectorTypeSupport.createFloatType(pq.getSubspaceCount() * pq.getClusterCount()));
     }
 
     @Override

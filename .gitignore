@@ -19,3 +19,6 @@ hdf5/
 
 ### Native libraries
 *.so
+
+### asdf (or other version managers)
+.tool-versions
