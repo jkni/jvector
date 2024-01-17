@@ -30,7 +30,7 @@ public interface CompressedVectors extends Accountable {
 
     /**
      * @return a ScoreFunction suitable for performing search against the compressed vectors,
-     * potentially without decompression them first
+     * potentially without decompressing them first
      */
     NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(VectorFloat<?> q, VectorSimilarityFunction similarityFunction);
 

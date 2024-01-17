@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package io.github.jbellis.jvector.disk;
+package io.github.jbellis.jvector.pq;
 
+import io.github.jbellis.jvector.disk.RandomAccessReader;
+import io.github.jbellis.jvector.disk.ReaderSupplier;
 import io.github.jbellis.jvector.graph.*;
-import io.github.jbellis.jvector.pq.FusedPQDecoder;
-import io.github.jbellis.jvector.pq.PQVectors;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
@@ -45,7 +45,7 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
     private final int entryNode;
     private final int maxDegree;
     private final int dimension;
-    private final int subspaceCount;
+    final PQVectors pqv;
 
     public OnDiskADCGraphIndex(ReaderSupplier readerSupplier, long offset)
     {
@@ -57,7 +57,12 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
             dimension = reader.readInt();
             entryNode = reader.readInt();
             maxDegree = reader.readInt();
-            subspaceCount = reader.readInt();
+            var subspaceCount = reader.readInt();
+            pqv = PQVectors.load(reader, offset + 5 * Integer.BYTES // structural data
+                    + size * (Integer.BYTES // ordinal
+                    + dimension * Float.BYTES // vector
+                    + subspaceCount * maxDegree // compressed neighbors
+                    + Integer.BYTES * (maxDegree + 1)));// neighbors
         } catch (Exception e) {
             throw new RuntimeException("Error initializing OnDiskADCGraphIndex at offset " + offset, e);
         }
@@ -99,12 +104,12 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
         return new OnDiskView(readerSupplier.get());
     }
 
-    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(PQVectors pq, T query, VectorSimilarityFunction similarityFunction) {
+    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(T query, VectorSimilarityFunction similarityFunction) {
         switch (similarityFunction) {
             case DOT_PRODUCT:
-                return new FusedPQDecoder.DotProductDecoder((OnDiskADCGraphIndex<VectorFloat<?>>) this, pq, (VectorFloat<?>) query);
+                return new QuickADCPQDecoder.DotProductDecoder((OnDiskADCGraphIndex<VectorFloat<?>>) this, (VectorFloat<?>) query);
             case EUCLIDEAN:
-                return new FusedPQDecoder.EuclideanDecoder((OnDiskADCGraphIndex<VectorFloat<?>>) this, pq, (VectorFloat<?>) query);
+                return new QuickADCPQDecoder.EuclideanDecoder((OnDiskADCGraphIndex<VectorFloat<?>>) this, (VectorFloat<?>) query);
             default:
                 throw new IllegalArgumentException("Unsupported similarity function " + similarityFunction);
         }
@@ -122,13 +127,13 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
             super();
             this.reader = reader;
             this.neighbors = new int[maxDegree];
-            this.packedNeighbors = vectorTypeSupport.createByteType(maxDegree * subspaceCount);
+            this.packedNeighbors = vectorTypeSupport.createByteType(maxDegree * pqv.getCompressedSize());
         }
 
         public T getVector(int node) {
             try {
                 long offset = neighborsOffset +
-                        node * (Integer.BYTES + (long) dimension * Float.BYTES + subspaceCount * maxDegree + (long) Integer.BYTES * (maxDegree + 1)) // earlier entries
+                        node * (Integer.BYTES + (long) dimension * Float.BYTES + pqv.getCompressedSize() * maxDegree + (long) Integer.BYTES * (maxDegree + 1)) // earlier entries
                         + Integer.BYTES; // skip the ID
                 reader.seek(offset);
                 return (T) vectorTypeSupport.readFloatType(reader, dimension);
@@ -141,7 +146,7 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
         public NodesIterator getNeighborsIterator(int node) {
             try {
                 reader.seek(neighborsOffset +
-                        (node + 1) * (Integer.BYTES + (long) dimension * Float.BYTES + subspaceCount * maxDegree) +
+                        (node + 1) * (Integer.BYTES + (long) dimension * Float.BYTES + pqv.getCompressedSize() * maxDegree) +
                         (node * (long) Integer.BYTES * (maxDegree + 1)));
                 int neighborCount = reader.readInt();
                 assert neighborCount <= maxDegree : String.format("neighborCount %d > M %d", neighborCount, maxDegree);
@@ -157,7 +162,7 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
             try {
                 reader.seek(neighborsOffset +
                         (node + 1) * (Integer.BYTES + (long) dimension * Float.BYTES)
-                        + ((node) * (subspaceCount * maxDegree + Integer.BYTES * (maxDegree + 1))));
+                        + ((node) * (pqv.getCompressedSize() * maxDegree + Integer.BYTES * (maxDegree + 1))));
                 vectorTypeSupport.readByteType(reader, packedNeighbors);
                 return packedNeighbors;
             }
@@ -209,7 +214,7 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
      *
      * If any nodes have been deleted, you must use the overload specifying `oldToNewOrdinals` instead.
      */
-    public static <T> void write(GraphIndex<T> graph, RandomAccessVectorValues<T> vectors, PQVectors pq, DataOutput out)
+    public static <T> void write(GraphIndex<T> graph, RandomAccessVectorValues<T> vectors, PQVectors pqVectors, DataOutput out)
             throws IOException
     {
         try (var view = graph.getView()) {
@@ -219,7 +224,7 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
         } catch (Exception e) {
             throw new IOException(e);
         }
-        write(graph, vectors, getSequentialRenumbering(graph), pq, out);
+        write(graph, vectors, getSequentialRenumbering(graph), pqVectors, out);
     }
 
     /**
@@ -228,7 +233,7 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
      * @param oldToNewOrdinals A map from old to new ordinals. If ordinal numbering does not matter,
      *                         you can use `getSequentialRenumbering`, which will "fill in" holes left by
      *                         any deleted nodes.
-     * @param pq the ProductQuantization used to compress the vectors in `vectors, along with their
+     * @param pqVectors the ProductQuantization used to compress the vectors in `vectors, along with their
      *           compressed representation. These compressed representations are embedded in the serialized
      *           graph to support accelerated ADC.
      * @param out the output to write to
@@ -236,7 +241,7 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
     public static <T> void write(GraphIndex<T> graph,
                                  RandomAccessVectorValues<T> vectors,
                                  Map<Integer, Integer> oldToNewOrdinals,
-                                 PQVectors pq,
+                                 PQVectors pqVectors,
                                  DataOutput out)
             throws IOException
     {
@@ -264,8 +269,8 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
             out.writeInt(vectors.dimension());
             out.writeInt(view.entryNode());
             out.writeInt(graph.maxDegree());
-            out.writeInt(pq.getCompressedSize());
-            VectorByte<?> compressedNeighbors = vectorTypeSupport.createByteType(pq.getCompressedSize() * graph.maxDegree());
+            out.writeInt(pqVectors.getCompressedSize());
+            VectorByte<?> compressedNeighbors = vectorTypeSupport.createByteType(pqVectors.getCompressedSize() * graph.maxDegree());
 
             // for each graph node, write the associated vector and its neighbors
             for (int i = 0; i < oldToNewOrdinals.size(); i++) {
@@ -281,26 +286,19 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
                 var neighbors = view.getNeighborsIterator(originalOrdinal);
                 int n = 0;
                 var neighborSize = neighbors.size();
-                for (; n < neighborSize; n++) {
-                    var compressed = pq.get(neighbors.next());
-                    // copy into the compressedNeighbors array
-                    //System.arraycopy(compressed, 0, compressedNeighbors, n * pq.getCompressedSize(), pq.getCompressedSize());
-                    for (int j = 0; j < pq.getCompressedSize(); j++) {
-                        compressedNeighbors.set(n * pq.getCompressedSize() + j, compressed.get(j));
-                    }
-                }
-                for (; n < graph.maxDegree(); n++) {
-                    for (int j = 0; j < pq.getCompressedSize(); j++) {
-                        compressedNeighbors.set(n * pq.getCompressedSize() + j, (byte) 0);
-                    }
-                }
-                // fill rest of compressedNeighbors with 0
-                //Arrays.fill(compressedNeighbors, n * pq.getCompressedSize(), graph.maxDegree() * pq.getCompressedSize(), (byte) 0);
 
-                for (int subspace = 0; subspace < pq.getCompressedSize(); subspace++) {
+                compressedNeighbors.zero(); // TODO: make more efficient
+                for (; n < neighborSize; n++) {
+                    var compressed = pqVectors.get(neighbors.next());
+                    for (int j = 0; j < pqVectors.getCompressedSize(); j++) {
+                        compressedNeighbors.set(n * pqVectors.getCompressedSize() + j, compressed.get(j));
+                    }
+                }
+
+                for (int subspace = 0; subspace < pqVectors.getCompressedSize(); subspace++) {
                     n = 0;
                     for (; n < neighborSize; n++) {
-                        out.writeByte(compressedNeighbors.get(n * pq.getCompressedSize() + subspace));
+                        out.writeByte(compressedNeighbors.get(n * pqVectors.getCompressedSize() + subspace));
                     }
                     for (; n < graph.maxDegree(); n++) {
                         out.writeByte(0);
@@ -320,6 +318,7 @@ public class OnDiskADCGraphIndex<T> implements FusedGraphIndex<T>, AutoCloseable
                     out.writeInt(-1);
                 }
             }
+            pqVectors.write(out);
         } catch (Exception e) {
             throw new IOException(e);
         }

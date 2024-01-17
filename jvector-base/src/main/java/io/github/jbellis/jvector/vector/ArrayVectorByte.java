@@ -54,6 +54,11 @@ final public class ArrayVectorByte implements VectorByte<byte[]>
     }
 
     @Override
+    public void zero() {
+        Arrays.fill(data, (byte) 0);
+    }
+
+    @Override
     public int length() {
         return data.length;
     }

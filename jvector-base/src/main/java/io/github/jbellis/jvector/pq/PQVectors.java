@@ -24,6 +24,7 @@ import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
+import org.apache.commons.math3.stat.descriptive.summary.Product;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -59,7 +60,7 @@ public class PQVectors implements CompressedVectors {
         }
     }
 
-    public static CompressedVectors load(RandomAccessReader in, long offset) throws IOException
+    public static PQVectors load(RandomAccessReader in, long offset) throws IOException
     {
         in.seek(offset);
 
@@ -119,6 +120,10 @@ public class PQVectors implements CompressedVectors {
 
     public VectorByte<?> get(int ordinal) {
         return compressedVectors[ordinal];
+    }
+
+    public ProductQuantization getProductQuantization() {
+        return pq;
     }
 
     VectorFloat<?> reusablePartialSums() {

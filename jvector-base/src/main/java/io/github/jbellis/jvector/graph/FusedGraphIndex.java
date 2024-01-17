@@ -16,6 +16,7 @@
 
 package io.github.jbellis.jvector.graph;
 
+import io.github.jbellis.jvector.pq.CompressedVectors;
 import io.github.jbellis.jvector.pq.PQVectors;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
@@ -25,5 +26,5 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
  * @param <T>
  */
 public interface FusedGraphIndex<T> extends GraphIndex<T> {
-    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(PQVectors pq, T query, VectorSimilarityFunction similarityFunction);
+    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(T query, VectorSimilarityFunction similarityFunction);
 }

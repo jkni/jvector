@@ -16,7 +16,7 @@
 
 package io.github.jbellis.jvector;
 
-import io.github.jbellis.jvector.disk.OnDiskADCGraphIndex;
+import io.github.jbellis.jvector.pq.OnDiskADCGraphIndex;
 import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.GraphIndexBuilder;

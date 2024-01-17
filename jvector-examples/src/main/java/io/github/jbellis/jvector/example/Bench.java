@@ -18,7 +18,7 @@ package io.github.jbellis.jvector.example;
 
 import io.github.jbellis.jvector.disk.CachingFusedGraphIndex;
 import io.github.jbellis.jvector.disk.CachingGraphIndex;
-import io.github.jbellis.jvector.disk.OnDiskADCGraphIndex;
+import io.github.jbellis.jvector.pq.OnDiskADCGraphIndex;
 import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.example.util.DataSet;
 import io.github.jbellis.jvector.example.util.DataSetCreator;
@@ -186,7 +186,7 @@ public class Bench {
                     var view = index.getView();
                     NodeSimilarity.ApproximateScoreFunction sf;
                     if (index instanceof CachingFusedGraphIndex) {
-                        sf = ((CachingFusedGraphIndex) index).approximateFusedScoreFunctionFor((PQVectors) cv, queryVector, ds.similarityFunction);
+                        sf = ((CachingFusedGraphIndex) index).approximateFusedScoreFunctionFor(queryVector, ds.similarityFunction);
                     } else {
                         sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
                     }

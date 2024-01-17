@@ -19,6 +19,7 @@ package io.github.jbellis.jvector.disk;
 import io.github.jbellis.jvector.graph.FusedGraphIndex;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.graph.NodesIterator;
+import io.github.jbellis.jvector.pq.OnDiskADCGraphIndex;
 import io.github.jbellis.jvector.pq.PQVectors;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.util.Bits;
@@ -77,8 +78,8 @@ public class CachingFusedGraphIndex implements FusedGraphIndex<VectorFloat<?>>, 
     }
 
     @Override
-    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(PQVectors pq, VectorFloat<?> query, VectorSimilarityFunction similarityFunction) {
-        return graph.approximateFusedScoreFunctionFor(pq, query, similarityFunction);
+    public NodeSimilarity.ApproximateScoreFunction approximateFusedScoreFunctionFor(VectorFloat<?> query, VectorSimilarityFunction similarityFunction) {
+        return graph.approximateFusedScoreFunctionFor(query, similarityFunction);
     }
 
     public class CachedView implements View<VectorFloat<?>> {

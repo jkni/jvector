@@ -25,5 +25,7 @@ public interface VectorByte<T> extends VectorType<Byte, T>
 
     void set(int i, byte value);
 
+    void zero();
+
     void copyFrom(VectorByte<?> src, int srcOffset, int destOffset, int length);
 }

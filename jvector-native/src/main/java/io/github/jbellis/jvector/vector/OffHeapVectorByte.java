@@ -94,6 +94,11 @@ public class OffHeapVectorByte implements VectorByte<MemorySegment> {
     }
 
     @Override
+    public void zero() {
+        segment.fill((byte) 0);
+    }
+
+    @Override
     public int length() {
         return (int) segment.byteSize();
     }
