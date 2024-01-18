@@ -303,19 +303,11 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
                 for (; n < neighborSize; n++) {
                     var compressed = pqVectors.get(neighbors.next());
                     for (int j = 0; j < pqVectors.getCompressedSize(); j++) {
-                        compressedNeighbors.set(n * pqVectors.getCompressedSize() + j, compressed.get(j));
+                        compressedNeighbors.set(j * graph.maxDegree() + n, compressed.get(j));
                     }
                 }
 
-                for (int subspace = 0; subspace < pqVectors.getCompressedSize(); subspace++) {
-                    n = 0;
-                    for (; n < neighborSize; n++) {
-                        out.writeByte(compressedNeighbors.get(n * pqVectors.getCompressedSize() + subspace));
-                    }
-                    for (; n < graph.maxDegree(); n++) {
-                        out.writeByte(0);
-                    }
-                }
+                vectorTypeSupport.writeByteType(out, compressedNeighbors);
 
                 neighbors = view.getNeighborsIterator(originalOrdinal);
                 out.writeInt(neighbors.size());
