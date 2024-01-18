@@ -304,8 +304,6 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
                 vectorTypeSupport.createFloatType(new float[]{0, 0, 20}),
                 vectorTypeSupport.createFloatType(new float[]{0, 9, 0})
         };
-        System.out.println(values[0].getClass());
-        System.out.println(vectorTypeSupport);
         AbstractMockVectorValues<T> vectors = vectorValues(values);
         // First add nodes until everybody gets a full neighbor list
         VectorEncoding vectorEncoding = getVectorEncoding();

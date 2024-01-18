@@ -69,7 +69,6 @@ public abstract class QuickADCPQDecoder implements NodeSimilarity.ApproximateSco
                     }
                 }
             }
-            //System.out.println(Arrays.toString(indexCounts));
         }
 
         protected float decodedSimilarity(VectorByte<?> encoded) {

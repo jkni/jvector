@@ -30,10 +30,6 @@ public class ReaderSupplierFactory {
             if (Files.size(path) > Integer.MAX_VALUE) {
                 throw new RuntimeException("File sizes greater than 2GB are not supported on Windows--contributions welcome");
             }
-            System.out.println(e);
-
-            System.out.println("Falling back to SMRS");
-
             return new SimpleMappedReaderSupplier(path);
         }
     }
