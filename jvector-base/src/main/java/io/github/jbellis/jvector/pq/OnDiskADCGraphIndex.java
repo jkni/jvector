@@ -39,7 +39,6 @@ import java.util.stream.IntStream;
 
 public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accountable, ApproximateScoreProvider
 {
-    private static final Cleaner cleaner = Cleaner.create();
     private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     private final ReaderSupplier readerSupplier;
     private final long neighborsOffset;
@@ -120,6 +119,16 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
         }
     }
 
+    private static Runnable createViewCleaner(RandomAccessReader reader) {
+        return () -> {
+            try {
+                reader.close();
+            } catch (IOException ignored) {
+            }
+        };
+    }
+
+
     // TODO: This is fake generic until the reading functionality uses T
     public class OnDiskView implements GraphIndex.View<T>, AutoCloseable
     {
@@ -132,12 +141,7 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
         {
             super();
             this.reader = reader;
-            this.cleanable = cleaner.register(this, () -> {
-                try {
-                    reader.close();
-                } catch (IOException ignored) {
-                }
-            });
+            this.cleanable = cleaner.register(this, createViewCleaner(reader));
             this.neighbors = new int[maxDegree];
             this.packedNeighbors = vectorTypeSupport.createByteType(maxDegree * pqv.getCompressedSize());
         }

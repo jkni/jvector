@@ -183,17 +183,20 @@ public class Bench {
                 var queryVector = ds.queryVectors.get(i);
                 SearchResult sr;
                 if (cv != null) {
-                    var view = index.getView();
-                    NodeSimilarity.ApproximateScoreFunction sf;
-                    if (index instanceof CachingADCGraphIndex) {
-                        sf = ((CachingADCGraphIndex) index).approximateScoreFunctionFor(queryVector, ds.similarityFunction);
-                    } else {
-                        sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
+                    try (var view = index.getView()) {
+                        NodeSimilarity.ApproximateScoreFunction sf;
+                        if (index instanceof CachingADCGraphIndex) {
+                            sf = ((CachingADCGraphIndex) index).approximateScoreFunctionFor(queryVector, ds.similarityFunction);
+                        } else {
+                            sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
+                        }
+                        NodeSimilarity.ReRanker rr = (j) -> ds.similarityFunction.compare(queryVector, exactVv.vectorValue(j));
+                        sr = new GraphSearcher.Builder<>(view)
+                                .build()
+                                .search(sf, rr, efSearch, Bits.ALL);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
                     }
-                    NodeSimilarity.ReRanker rr = (j) -> ds.similarityFunction.compare(queryVector, exactVv.vectorValue(j));
-                    sr = new GraphSearcher.Builder<>(view)
-                            .build()
-                            .search(sf, rr, efSearch, Bits.ALL);
                 } else {
                     sr = GraphSearcher.search(queryVector, efSearch, exactVv, VectorEncoding.FLOAT32, ds.similarityFunction, index, Bits.ALL);
                 }

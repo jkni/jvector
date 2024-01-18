@@ -28,6 +28,7 @@ import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.types.VectorByte;
 
 import java.io.IOException;
+import java.lang.ref.Cleaner;
 
 /**
  * Represents a graph-based vector index.  Nodes are represented as ints, and edges are
@@ -40,6 +41,8 @@ import java.io.IOException;
  * in a View that should be created per accessing thread.
  */
 public interface GraphIndex<T> extends AutoCloseable {
+    public static final Cleaner cleaner = Cleaner.create();
+
     /** Returns the number of nodes in the graph */
     int size();
 
