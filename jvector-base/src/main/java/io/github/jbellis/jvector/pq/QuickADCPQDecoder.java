@@ -84,7 +84,7 @@ public abstract class QuickADCPQDecoder implements NodeSimilarity.ApproximateSco
         public DotProductDecoder(OnDiskADCGraphIndex<VectorFloat<?>> fgi, VectorFloat<?> query) {
             super(fgi.pqv, query, VectorSimilarityFunction.DOT_PRODUCT);
             this.fgi = fgi;
-            this.fgiView = fgi.getView();
+            this.fgiView = fgi.scoreView.get();
             this.results = vectorTypeSupport.createFloatType(fgi.maxDegree());
         }
 
@@ -115,7 +115,7 @@ public abstract class QuickADCPQDecoder implements NodeSimilarity.ApproximateSco
         public EuclideanDecoder(OnDiskADCGraphIndex<VectorFloat<?>> fgi, VectorFloat<?> query) {
             super(fgi.pqv, query, VectorSimilarityFunction.EUCLIDEAN);
             this.fgi = fgi;
-            this.fgiView = fgi.getView();
+            this.fgiView = fgi.scoreView.get();
             this.results = vectorTypeSupport.createFloatType(fgi.maxDegree());
         }
 

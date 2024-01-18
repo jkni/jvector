@@ -30,6 +30,7 @@ import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.ref.Cleaner;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ import java.util.stream.IntStream;
 
 public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Accountable, ApproximateScoreProvider
 {
+    private static final Cleaner cleaner = Cleaner.create();
     private static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
     private final ReaderSupplier readerSupplier;
     private final long neighborsOffset;
@@ -45,12 +47,15 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
     private final int entryNode;
     private final int maxDegree;
     private final int dimension;
+    final ThreadLocal<OnDiskView> scoreView;
     final PQVectors pqv;
+
 
     public OnDiskADCGraphIndex(ReaderSupplier readerSupplier, long offset)
     {
         this.readerSupplier = readerSupplier;
         this.neighborsOffset = offset + 5 * Integer.BYTES;
+        scoreView = ThreadLocal.withInitial(() -> new OnDiskView(readerSupplier.get()));
         try (var reader = readerSupplier.get()) {
             reader.seek(offset);
             size = reader.readInt();
@@ -121,11 +126,18 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
         private final RandomAccessReader reader;
         private final int[] neighbors;
         private final VectorByte<?> packedNeighbors;
+        private final Cleaner.Cleanable cleanable;
 
         public OnDiskView(RandomAccessReader reader)
         {
             super();
             this.reader = reader;
+            this.cleanable = cleaner.register(this, () -> {
+                try {
+                    reader.close();
+                } catch (IOException ignored) {
+                }
+            });
             this.neighbors = new int[maxDegree];
             this.packedNeighbors = vectorTypeSupport.createByteType(maxDegree * pqv.getCompressedSize());
         }
@@ -188,7 +200,7 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
 
         @Override
         public void close() throws IOException {
-            reader.close();
+            cleanable.clean();
         }
     }
 
