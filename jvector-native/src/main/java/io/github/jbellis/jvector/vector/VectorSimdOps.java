@@ -17,11 +17,18 @@
 package io.github.jbellis.jvector.vector;
 
 import io.github.jbellis.jvector.vector.types.VectorFloat;
-import jdk.incubator.vector.*;
+import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.LongVector;
+import jdk.incubator.vector.VectorOperators;
 
 import java.nio.ByteOrder;
 import java.util.List;
 
+/**
+ * Support class for vector operations using a mix of native and Panama SIMD.
+ */
 final class VectorSimdOps {
     static float sum(OffHeapVectorFloat vector) {
         var sum = FloatVector.zero(FloatVector.SPECIES_PREFERRED);
@@ -588,29 +595,5 @@ final class VectorSimdOps {
         }
 
         return res;
-    }
-
-    public static void bulkShuffleSimilarity(OffHeapVectorByte shuffles, int codebookCount, OffHeapVectorFloat tlPartials, OffHeapVectorFloat results) {
-        // 32 is from neighbor count
-        // 16 is from CLUSTERS
-        var tmpLeft = FloatVector.zero(FloatVector.SPECIES_512);
-        var tmpRight = FloatVector.zero(FloatVector.SPECIES_512);
-        var intShuffles = new int[shuffles.length()];
-        for (int i = 0; i < shuffles.length(); i++) {
-            intShuffles[i] = Byte.toUnsignedInt(shuffles.get(i));
-        }
-        for (int i = 0; i < codebookCount; i++) {
-            var shuffleLeft = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32);
-            var shuffleRight = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32 + 16);
-            var partials = FloatVector.fromMemorySegment(FloatVector.SPECIES_512, tlPartials.get(), tlPartials.offset(i * 16), ByteOrder.LITTLE_ENDIAN);
-            tmpLeft = tmpLeft.add(partials.rearrange(shuffleLeft));
-            tmpRight = tmpRight.add(partials.rearrange(shuffleRight));
-        }
-        tmpLeft = tmpLeft.add(1);
-        tmpRight = tmpRight.add(1);
-        tmpLeft = tmpLeft.div(2);
-        tmpRight = tmpRight.div(2);
-        tmpLeft.intoMemorySegment(results.get(), 0, ByteOrder.LITTLE_ENDIAN);
-        tmpRight.intoMemorySegment(results.get(), results.offset(16), ByteOrder.LITTLE_ENDIAN);
     }
 }

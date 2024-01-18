@@ -21,6 +21,9 @@ import java.util.Arrays;
 import io.github.jbellis.jvector.util.RamUsageEstimator;
 import io.github.jbellis.jvector.vector.types.VectorByte;
 
+/**
+ * VectorByte implementation backed by an on-heap byte array.
+ */
 final public class ArrayVectorByte implements VectorByte<byte[]>
 {
     private final byte[] data;
@@ -71,12 +74,6 @@ final public class ArrayVectorByte implements VectorByte<byte[]>
     @Override
     public long ramBytesUsed() {
         return RamUsageEstimator.sizeOf(data) + RamUsageEstimator.shallowSizeOfInstance(VectorByte.class);
-    }
-
-    @Override
-    public byte[] array()
-    {
-        return data;
     }
 
     @Override

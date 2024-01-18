@@ -19,10 +19,10 @@ package io.github.jbellis.jvector.vector;
 import io.github.jbellis.jvector.vector.cnative.LibraryLoader;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
+/**
+ * VectorizationProvider implementation that assumes OffHeap vectors and prefers native/Panama SIMD.
+ */
 public class NativeVectorizationProvider extends VectorizationProvider {
-    static {
-    }
-
     private final VectorUtilSupport vectorUtilSupport;
     private final VectorTypeSupport vectorTypeSupport;
 

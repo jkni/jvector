@@ -16,23 +16,10 @@
 
 package io.github.jbellis.jvector.example;
 
-import io.github.jbellis.jvector.pq.CachingADCGraphIndex;
 import io.github.jbellis.jvector.disk.CachingGraphIndex;
-import io.github.jbellis.jvector.pq.OnDiskADCGraphIndex;
 import io.github.jbellis.jvector.disk.OnDiskGraphIndex;
-import io.github.jbellis.jvector.example.util.DataSet;
-import io.github.jbellis.jvector.example.util.DataSetCreator;
-import io.github.jbellis.jvector.example.util.DownloadHelper;
-import io.github.jbellis.jvector.example.util.Hdf5Loader;
-import io.github.jbellis.jvector.example.util.ReaderSupplierFactory;
-import io.github.jbellis.jvector.example.util.SiftLoader;
-import io.github.jbellis.jvector.graph.GraphIndex;
-import io.github.jbellis.jvector.graph.GraphIndexBuilder;
-import io.github.jbellis.jvector.graph.GraphSearcher;
-import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
-import io.github.jbellis.jvector.graph.NodeSimilarity;
-import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
-import io.github.jbellis.jvector.graph.SearchResult;
+import io.github.jbellis.jvector.example.util.*;
+import io.github.jbellis.jvector.graph.*;
 import io.github.jbellis.jvector.pq.*;
 import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorEncoding;
@@ -44,11 +31,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -161,7 +144,6 @@ public class Bench {
 
     private static long topKCorrect(int topK, int[] resultNodes, Set<Integer> gt) {
         int count = Math.min(resultNodes.length, topK);
-        // stream the first count results into a Set
         var resultSet = Arrays.stream(resultNodes, 0, count)
                 .boxed()
                 .collect(Collectors.toSet());
@@ -222,7 +204,7 @@ public class Bench {
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, 32,
                                                   ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4,
-                        ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
+                                   ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN));
 
         // args is list of regexes, possibly needing to be split by whitespace.
         // generate a regex that matches any regex in args, or if args is empty/null, match everything
@@ -265,12 +247,12 @@ public class Bench {
             }
         }
 
-        // 2D grid, built and calculated at runtime
+        /*// 2D grid, built and calculated at runtime
         if (pattern.matcher("2dgrid").find()) {
             var grid2d = DataSetCreator.create2DGrid(4_000_000, 10_000, 100);
             gridSearch(grid2d, compressionGrid, mGrid, efConstructionGrid, efSearchGrid);
             cachedCompressors.clear();
-        }
+        }*/
     }
 
     private static DataSet loadNWDataData(String name) throws IOException {

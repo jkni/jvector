@@ -111,13 +111,10 @@ public abstract class VectorizationProvider {
         if (e.getCause() instanceof UnsupportedOperationException) {
           LOG.warning("Native vector API was not enabled. " + e.getCause().getMessage());
         } else {
-          System.out.println("Got invocation exception, but it looks different");
-          System.out.println(e.getCause().toString());
           throw new AssertionError(e);
         }
       }
       catch (Throwable th) {
-        System.out.println("throwing assertion error");
         throw new AssertionError(th);
       }
 
@@ -186,6 +183,6 @@ public abstract class VectorizationProvider {
   private static final class Holder {
     private Holder() {}
 
-    static final VectorizationProvider INSTANCE = lookup(true);
+    static final VectorizationProvider INSTANCE = lookup(false);
   }
 }

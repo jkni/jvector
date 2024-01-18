@@ -16,17 +16,18 @@
 
 package io.github.jbellis.jvector.vector;
 
-import java.io.DataOutput;
-import java.io.IOException;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-
 import io.github.jbellis.jvector.disk.RandomAccessReader;
 import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
+import java.io.DataOutput;
+import java.io.IOException;
+import java.nio.Buffer;
+
+/**
+ * VectorTypeSupport using off-heap MemorySegments.
+ */
 public class OffHeapVectorProvider implements VectorTypeSupport
 {
     @Override

@@ -28,8 +28,4 @@ public interface VectorFloat<T> extends VectorType<Float, T>
     void set(int i, float value);
 
     void zero();
-
-    //Hack till non-array support is added
-    float[] array();
-
 }

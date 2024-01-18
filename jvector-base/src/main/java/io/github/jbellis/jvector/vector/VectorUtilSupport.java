@@ -94,5 +94,5 @@ public interface VectorUtilSupport {
 
   public int hammingDistance(long[] v1, long[] v2);
 
-  void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results, VectorSimilarityFunction vsf);
+  void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> partials, VectorFloat<?> results, VectorSimilarityFunction vsf);
 }

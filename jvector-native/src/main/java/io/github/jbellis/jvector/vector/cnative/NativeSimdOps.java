@@ -2,11 +2,12 @@
 
 package io.github.jbellis.jvector.vector.cnative;
 
+import java.lang.foreign.AddressLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
-import java.lang.foreign.*;
+
 import static java.lang.foreign.ValueLayout.*;
+
 public class NativeSimdOps  {
 
     public static final OfByte C_CHAR = JAVA_BYTE;

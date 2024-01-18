@@ -54,7 +54,6 @@ public class Hdf5Loader {
         try (HdfFile hdf = new HdfFile(path)) {
             var baseVectorsArray =
                     (float[][]) hdf.getDatasetByPath("train").getData();
-            // stream baseVectorsArray
             baseVectors = IntStream.range(0, baseVectorsArray.length).parallel().mapToObj(i -> vectorTypeSupport.createFloatType(baseVectorsArray[i])).toArray(VectorFloat<?>[]::new);
             Dataset queryDataset = hdf.getDatasetByPath("test");
             if (((FloatingPoint) queryDataset.getDataType()).getBitPrecision() == 64) {

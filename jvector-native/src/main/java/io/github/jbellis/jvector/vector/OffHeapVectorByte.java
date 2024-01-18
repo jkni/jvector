@@ -16,23 +16,23 @@
 
 package io.github.jbellis.jvector.vector;
 
+import io.github.jbellis.jvector.vector.types.VectorByte;
+import io.github.jbellis.jvector.vector.types.VectorType;
+
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.Buffer;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Objects;
 
-import io.github.jbellis.jvector.vector.types.VectorByte;
-import io.github.jbellis.jvector.vector.types.VectorType;
-
+/**
+ * VectorByte implementation backed by an off-heap MemorySegment.
+ */
 public class OffHeapVectorByte implements VectorByte<MemorySegment> {
     private final MemorySegment segment;
     private static final ThreadLocal<SegmentAllocator> allocator =
-            ThreadLocal.withInitial(() -> SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64)));
+            ThreadLocal.withInitial(() -> SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64))); // TODO: real buffer pool
     private final int length;
 
     OffHeapVectorByte(int length) {
@@ -60,11 +60,6 @@ public class OffHeapVectorByte implements VectorByte<MemorySegment> {
     @Override
     public long ramBytesUsed() {
         return MemoryLayout.sequenceLayout(length, ValueLayout.JAVA_BYTE).byteSize();
-    }
-
-    @Override
-    public byte[] array() {
-        throw new UnsupportedOperationException();
     }
 
     @Override

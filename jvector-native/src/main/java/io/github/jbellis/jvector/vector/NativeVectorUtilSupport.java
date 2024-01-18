@@ -16,15 +16,15 @@
 
 package io.github.jbellis.jvector.vector;
 
-import java.lang.annotation.Native;
-import java.util.List;
-import java.util.Vector;
-
 import io.github.jbellis.jvector.vector.cnative.NativeSimdOps;
 import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
-import jdk.incubator.vector.FloatVector;
 
+import java.util.List;
+
+/**
+ * VectorUtilSupport implementation that prefers native/Panama SIMD.
+ */
 final class NativeVectorUtilSupport implements VectorUtilSupport
 {
     @Override
@@ -114,10 +114,10 @@ final class NativeVectorUtilSupport implements VectorUtilSupport
     }
 
     @Override
-    public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
+    public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> partials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
         switch (vsf) {
-            case DOT_PRODUCT -> NativeSimdOps.bulk_shuffle_dot_f32_512(((OffHeapVectorByte) shuffles).get(), codebookCount, ((OffHeapVectorFloat) tlPartials).get(), ((OffHeapVectorFloat) results).get());
-            case EUCLIDEAN -> NativeSimdOps.bulk_shuffle_euclidean_f32_512(((OffHeapVectorByte) shuffles).get(), codebookCount, ((OffHeapVectorFloat) tlPartials).get(), ((OffHeapVectorFloat) results).get());
+            case DOT_PRODUCT -> NativeSimdOps.bulk_shuffle_dot_f32_512(((OffHeapVectorByte) shuffles).get(), codebookCount, ((OffHeapVectorFloat) partials).get(), ((OffHeapVectorFloat) results).get());
+            case EUCLIDEAN -> NativeSimdOps.bulk_shuffle_euclidean_f32_512(((OffHeapVectorByte) shuffles).get(), codebookCount, ((OffHeapVectorFloat) partials).get(), ((OffHeapVectorFloat) results).get());
             case COSINE -> throw new UnsupportedOperationException("Cosine similarity not supported for bulkShuffleSimilarity");
         }
     }

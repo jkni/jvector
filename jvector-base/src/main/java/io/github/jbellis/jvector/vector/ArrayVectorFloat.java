@@ -21,6 +21,9 @@ import java.util.Arrays;
 import io.github.jbellis.jvector.util.RamUsageEstimator;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 
+/**
+ * VectorFloat implementation backed by an on-heap float array.
+ */
 final public class ArrayVectorFloat implements VectorFloat<float[]>
 {
     private final float[] data;
@@ -79,11 +82,6 @@ final public class ArrayVectorFloat implements VectorFloat<float[]>
     {
         ArrayVectorFloat csrc = (ArrayVectorFloat) src;
         System.arraycopy(csrc.data, srcOffset, data, destOffset, length);
-    }
-
-    @Override
-    public float[] array() {
-        return data;
     }
 
     @Override

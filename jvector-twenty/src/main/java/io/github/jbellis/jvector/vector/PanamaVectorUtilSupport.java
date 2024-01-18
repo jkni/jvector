@@ -103,8 +103,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     @Override
-    public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
-        SimdOps.bulkShuffleSimilarity((ArrayVectorByte) shuffles, codebookCount, (ArrayVectorFloat) tlPartials, (ArrayVectorFloat) results, vsf);
+    public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> partials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
+        SimdOps.bulkShuffleSimilarity((ArrayVectorByte) shuffles, codebookCount, (ArrayVectorFloat) partials, (ArrayVectorFloat) results, vsf);
     }
 
     @Override

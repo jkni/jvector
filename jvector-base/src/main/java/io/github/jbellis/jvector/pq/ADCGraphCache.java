@@ -26,6 +26,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Specialized cache for OnDiskADCGraphIndex.
+ * TODO: Refactor to make existing GraphCache pluggable for different CachedNode types.
+ */
 public abstract class ADCGraphCache implements Accountable
 {
     public static final class CachedNode {
@@ -43,7 +47,7 @@ public abstract class ADCGraphCache implements Accountable
     /** return the cached node if present, or null if not */
     public abstract CachedNode getNode(int ordinal);
 
-    public static ADCGraphCache load(GraphIndex<VectorFloat<?>> graph, int distance) throws IOException
+    public static ADCGraphCache load(OnDiskADCGraphIndex<VectorFloat<?>> graph, int distance) throws IOException
     {
         if (distance < 0)
             return new EmptyGraphCache();
@@ -71,7 +75,7 @@ public abstract class ADCGraphCache implements Accountable
         private final Map<Integer, CachedNode> cache;
         private long ramBytesUsed = 0;
 
-        public HMGraphCache(GraphIndex<VectorFloat<?>> graph, int distance) {
+        public HMGraphCache(OnDiskADCGraphIndex<VectorFloat<?>> graph, int distance) {
             var view = graph.getView();
             HashMap<Integer, ADCGraphCache.CachedNode> tmpCache = new HashMap<>();
             cacheNeighborsOf(tmpCache, view, view.entryNode(), distance);
@@ -79,7 +83,7 @@ public abstract class ADCGraphCache implements Accountable
             cache = tmpCache;
         }
 
-        private void cacheNeighborsOf(HashMap<Integer, CachedNode> tmpCache, GraphIndex.View<VectorFloat<?>> view, int ordinal, int distance) {
+        private void cacheNeighborsOf(HashMap<Integer, CachedNode> tmpCache, OnDiskADCGraphIndex<VectorFloat<?>>.OnDiskView view, int ordinal, int distance) {
             // cache this node
             var it = view.getNeighborsIterator(ordinal);
             int[] neighbors = new int[it.size()];

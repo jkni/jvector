@@ -16,10 +16,12 @@
 
 package io.github.jbellis.jvector.vector;
 
-import jdk.incubator.vector.FloatVector;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
+import jdk.incubator.vector.FloatVector;
 
-
+/**
+ * Vectorization provider that uses on-heap arrays and SIMD operations through Panama SIMD API.
+ */
 public class PanamaVectorizationProvider extends VectorizationProvider
 {
     static {

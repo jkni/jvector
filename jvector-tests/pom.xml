@@ -83,6 +83,7 @@
                         <configuration>
                             <argLine>
                                 --add-modules jdk.incubator.vector
+                                --enable-native-access=ALL-UNNAMED
                                 -Djava.library.path=${project.build.directory}/../jvector-native/src/main/resources
                                 --enable-preview
                             </argLine>

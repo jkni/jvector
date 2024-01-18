@@ -41,6 +41,8 @@ import java.lang.ref.Cleaner;
  * in a View that should be created per accessing thread.
  */
 public interface GraphIndex<T> extends AutoCloseable {
+    // Cleaner used for closing GraphIndex Views in unstructured contexts.
+    // This includes Views used for score functions as well as searchers.
     public static final Cleaner cleaner = Cleaner.create();
 
     /** Returns the number of nodes in the graph */
@@ -107,10 +109,6 @@ public interface GraphIndex<T> extends AutoCloseable {
          * at the end of the search.
          */
         T getVector(int node);
-
-        default VectorByte<?> getPackedNeighbors(int node) {
-            throw new UnsupportedOperationException();
-        }
 
         /**
          * Return a Bits instance indicating which nodes are live.  The result is undefined for

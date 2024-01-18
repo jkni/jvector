@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.github.jbellis.jvector.pq;
 
 import io.github.jbellis.jvector.graph.GraphIndex;
@@ -25,8 +26,8 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
 /**
- * Performs similarity comparisons with compressed vectors without decoding them
- * These decoders used Quick(er) ADC style transposed SIMD vectors fused into a graph.
+ * Performs similarity comparisons with compressed vectors without decoding them.
+ * These decoders use Quick(er) ADC-style transposed vectors fused into a graph.
  */
 public abstract class QuickADCPQDecoder implements NodeSimilarity.ApproximateScoreFunction {
     protected final PQVectors pqv;
@@ -54,16 +55,11 @@ public abstract class QuickADCPQDecoder implements NodeSimilarity.ApproximateSco
                     VectorFloat<?> centroidSubvector = pq.codebooks[i][j];
                     switch (vsf) {
                         case DOT_PRODUCT:
-                            /*var dotProduct = VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length);
-                            var dotProductShifted = dotProduct + .02;
-                            // dotProductShifted divided by step, must fall in the range 0 - 127
-                            var index = (byte) Math.min(127, Math.max(0, Math.round(dotProductShifted / step)));
-                            //indexCounts[index] = indexCounts[index] + 1;*/
-                            //tlPartials[baseOffset + j] = index
                             partialSums.set(baseOffset + j, VectorUtil.dotProduct(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length()));
                             break;
                         case EUCLIDEAN:
-                            throw new UnsupportedOperationException("Unsupported similarity function " + vsf);
+                            partialSums.set(baseOffset + j, VectorUtil.squareDistance(centroidSubvector, 0, centeredQuery, offset, centroidSubvector.length()));
+                            break;
                         default:
                             throw new UnsupportedOperationException("Unsupported similarity function " + vsf);
                     }
@@ -76,10 +72,11 @@ public abstract class QuickADCPQDecoder implements NodeSimilarity.ApproximateSco
         }
     }
 
-    public static class DotProductDecoder extends CachingDecoder {
-        private final GraphIndex.View<VectorFloat<?>> fgiView;
+     static class DotProductDecoder extends CachingDecoder {
         private final OnDiskADCGraphIndex<VectorFloat<?>> fgi;
+        private final OnDiskADCGraphIndex<VectorFloat<?>>.OnDiskView fgiView;
         private final VectorFloat<?> results;
+
         public DotProductDecoder(OnDiskADCGraphIndex<VectorFloat<?>> fgi, VectorFloat<?> query) {
             super(fgi.pqv, query, VectorSimilarityFunction.DOT_PRODUCT);
             this.fgi = fgi;
@@ -106,9 +103,9 @@ public abstract class QuickADCPQDecoder implements NodeSimilarity.ApproximateSco
         }
     }
 
-    public static class EuclideanDecoder extends CachingDecoder {
+    static class EuclideanDecoder extends CachingDecoder {
         private final OnDiskADCGraphIndex fgi;
-        private final GraphIndex.View<VectorFloat<?>> fgiView;
+        private final OnDiskADCGraphIndex<VectorFloat<?>>.OnDiskView fgiView;
         private final VectorFloat<?> results;
 
         public EuclideanDecoder(OnDiskADCGraphIndex<VectorFloat<?>> fgi, VectorFloat<?> query) {

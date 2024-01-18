@@ -149,10 +149,10 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         }
       }
 
-      // benchmark that the various ways of accessing the bits are equivalent
+      // test that the various ways of accessing the bits are equivalent
       doGet(a, b);
 
-      // benchmark ranges, including possible extension
+      // test ranges, including possible extension
       int fromIndex, toIndex;
       fromIndex = random().nextInt(sz / 2);
       toIndex = fromIndex + random().nextInt(sz - fromIndex);
@@ -228,7 +228,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     doRandomSets(atLeast(1200), iters, 2);
   }
 
-  // uncomment to run a bigger benchmark (~2 minutes).
+  // uncomment to run a bigger test (~2 minutes).
   /*
   public void testBig() {
     doRandomSets(2000,200000, 1);
@@ -238,7 +238,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
   @Test
   public void testEquals() {
-    // This benchmark can't handle numBits==0:
+    // This test can't handle numBits==0:
     final int numBits = random().nextInt(2000) + 1;
     FixedBitSet b1 = new FixedBitSet(numBits);
     FixedBitSet b2 = new FixedBitSet(numBits);
@@ -262,7 +262,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
   @Test
   public void testHashCodeEquals() {
-    // This benchmark can't handle numBits==0:
+    // This test can't handle numBits==0:
     final int numBits = random().nextInt(2000) + 1;
     FixedBitSet b1 = new FixedBitSet(numBits);
     FixedBitSet b2 = new FixedBitSet(numBits);

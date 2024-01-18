@@ -31,12 +31,16 @@ import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
+/**
+ * A VectorUtilSupport implementation supported by JDK 11+. This implementation assumes the VectorFloat/VectorByte
+ * objects wrap an on-heap array of the corresponding type.
+ */
 final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float dotProduct(VectorFloat<?> av, VectorFloat<?> bv) {
-    float[] a = av.array();
-    float[] b = bv.array();
+    float[] a = ((ArrayVectorFloat) av).get();
+    float[] b = ((ArrayVectorFloat) bv).get();
 
     float res = 0f;
     /*
@@ -105,8 +109,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   @Override
   public float dotProduct(VectorFloat<?> av, int aoffset, VectorFloat<?> bv, int boffset, int length)
   {
-    float[] a = av.array();
-    float[] b = bv.array();
+    float[] b = ((ArrayVectorFloat) bv).get();
+    float[] a = ((ArrayVectorFloat) av).get();
 
     float sum = 0f;
     for (int i = 0; i < length; i++) {
@@ -118,8 +122,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float cosine(VectorFloat<?> av, VectorFloat<?> bv) {
-    float[] a = av.array();
-    float[] b = bv.array();
+    float[] a = ((ArrayVectorFloat) av).get();
+    float[] b = ((ArrayVectorFloat) bv).get();
 
     float sum = 0.0f;
     float norm1 = 0.0f;
@@ -138,8 +142,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float squareDistance(VectorFloat<?> av, VectorFloat<?> bv) {
-    float[] a = av.array();
-    float[] b = bv.array();
+    float[] a = ((ArrayVectorFloat) av).get();
+    float[] b = ((ArrayVectorFloat) bv).get();
 
     float squareSum = 0.0f;
     int dim = a.length;
@@ -176,8 +180,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   @Override
   public float squareDistance(VectorFloat<?> av, int aoffset, VectorFloat<?> bv, int boffset, int length)
   {
-    float[] a = av.array();
-    float[] b = bv.array();
+    float[] a = ((ArrayVectorFloat) av).get();
+    float[] b = ((ArrayVectorFloat) bv).get();
 
     float squareSum = 0f;
     for (int i = 0; i < length; i++) {
@@ -190,8 +194,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int dotProduct(VectorByte<?> av, VectorByte<?> bv) {
-    byte[] a = av.array();
-    byte[] b = bv.array();
+    byte[] a = ((ArrayVectorByte) av).get();
+    byte[] b = ((ArrayVectorByte) bv).get();
 
     int total = 0;
     for (int i = 0; i < a.length; i++) {
@@ -202,8 +206,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float cosine(VectorByte<?> av, VectorByte<?> bv) {
-    byte[] a = av.array();
-    byte[] b = bv.array();
+    byte[] a = ((ArrayVectorByte) av).get();
+    byte[] b = ((ArrayVectorByte) bv).get();
 
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int sum = 0;
@@ -222,8 +226,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int squareDistance(VectorByte<?> av, VectorByte<?> bv) {
-    byte[] a = av.array();
-    byte[] b = bv.array();
+    byte[] a = ((ArrayVectorByte) av).get();
+    byte[] b = ((ArrayVectorByte) bv).get();
 
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int squareSum = 0;
@@ -305,10 +309,10 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
+  public void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> partials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
     for (int i = 0; i < codebookCount; i++) {
       for (int j = 0; j < 32; j++) {
-        results.set(j, results.get(j) + tlPartials.get(i * 32 + shuffles.get(i * 32 + j)));
+        results.set(j, results.get(j) + partials.get(i * 32 + shuffles.get(i * 32 + j)));
       }
     }
 

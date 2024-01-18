@@ -51,7 +51,7 @@ public interface NodeSimilarity {
         }
 
         default VectorFloat<?> bulkSimilarityTo(int node2) {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("bulk similarity not supported");
         }
     }
 

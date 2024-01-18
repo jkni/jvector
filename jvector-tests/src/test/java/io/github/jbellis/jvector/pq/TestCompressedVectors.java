@@ -22,15 +22,12 @@ import io.github.jbellis.jvector.TestUtil;
 import io.github.jbellis.jvector.disk.SimpleMappedReader;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
-import io.github.jbellis.jvector.vector.types.VectorFloat;
 import org.junit.Test;
 
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static io.github.jbellis.jvector.TestUtil.createRandomVectors;
 import static java.lang.Math.abs;
@@ -118,7 +115,7 @@ public class TestCompressedVectors extends RandomizedTest {
         }
     }
 
-    /*@Test
+    @Test
     public void testEncodings() {
         // start with i=2 (dimension 4) b/c dimension 2 is an outlier for our error prediction
         for (int i = 2; i <= 8; i++) {
@@ -126,7 +123,7 @@ public class TestCompressedVectors extends RandomizedTest {
                 testEncodings(2 * i, M);
             }
         }
-    }*/ //TODO: DO NOT MERGE
+    }
 
     @Test
     public void testCenteringDisturbance() {

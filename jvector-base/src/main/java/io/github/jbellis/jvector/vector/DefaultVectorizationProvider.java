@@ -24,11 +24,13 @@
 
 package io.github.jbellis.jvector.vector;
 
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
+
 /** Default provider returning scalar implementations. */
 final public class DefaultVectorizationProvider extends VectorizationProvider {
 
   private final VectorUtilSupport vectorUtilSupport;
-  private final ArrayVectorProvider vectorTypes;
+  private final VectorTypeSupport vectorTypes;
 
 
   public DefaultVectorizationProvider() {
@@ -42,7 +44,7 @@ final public class DefaultVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public ArrayVectorProvider getVectorTypeSupport() {
+  public VectorTypeSupport getVectorTypeSupport() {
     return vectorTypes;
   }
 }

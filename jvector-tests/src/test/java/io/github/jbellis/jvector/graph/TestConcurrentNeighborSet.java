@@ -21,7 +21,6 @@ import io.github.jbellis.jvector.util.ArrayUtil;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -29,16 +28,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class TestConcurrentNeighborSet extends RandomizedTest {
   protected static final VectorTypeSupport vectorTypeSupport = VectorizationProvider.getInstance().getVectorTypeSupport();
-
-  private static final NodeSimilarity simpleScore = a -> {
-    return (NodeSimilarity.ExactScoreFunction) b -> VectorSimilarityFunction.EUCLIDEAN.compare(vectorTypeSupport.createFloatType(new float[] { a }), vectorTypeSupport.createFloatType(new float[] { b }));
-  };
 
   private static void validateSortedByScore(NodeArray na) {
     for (int i = 0; i < na.size() - 1; i++) {

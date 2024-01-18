@@ -29,6 +29,10 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
+/**
+ * Specialized CachingGraphIndex for OnDiskADCGraphIndex.
+ * TODO: Refactor so that caching is pluggable for different GraphIndex implementations.
+ */
 public class CachingADCGraphIndex implements GraphIndex<VectorFloat<?>>, AutoCloseable, Accountable, ApproximateScoreProvider
 {
     private static final int CACHE_DISTANCE = 3;
@@ -82,9 +86,9 @@ public class CachingADCGraphIndex implements GraphIndex<VectorFloat<?>>, AutoClo
     }
 
     public class CachedView implements View<VectorFloat<?>> {
-        private final View<VectorFloat<?>> view;
+        private final OnDiskADCGraphIndex<VectorFloat<?>>.OnDiskView view;
 
-        public CachedView(View<VectorFloat<?>> view) {
+        public CachedView(OnDiskADCGraphIndex<VectorFloat<?>>.OnDiskView view) {
             this.view = view;
         }
 
@@ -106,7 +110,6 @@ public class CachingADCGraphIndex implements GraphIndex<VectorFloat<?>>, AutoClo
             return view.getVector(node);
         }
 
-        @Override
         public VectorByte<?> getPackedNeighbors(int node) {
             var cached = cache.getNode(node);
             if (cached != null) {

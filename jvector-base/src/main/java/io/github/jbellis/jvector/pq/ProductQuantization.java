@@ -184,7 +184,7 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
     }
 
     /**
-     * Decodes the quantized representation (byte array) to its approximate original vector.
+     * Decodes the quantized representation (VectorByte) to its approximate original vector.
      */
     public void decode(VectorByte<?> encoded, VectorFloat<?> target) {
         decodeCentered(encoded, target);

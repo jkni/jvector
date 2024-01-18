@@ -676,45 +676,10 @@ final class SimdOps {
     }
 
 
-    public static void bulkShuffleSimilarity(ArrayVectorByte shuffles, int codebookCount, ArrayVectorFloat tlPartials, ArrayVectorFloat results, VectorSimilarityFunction vsf) {
-        // 32 is from neighbor count
-        // 16 is from CLUSTERS
-        /*var tmpLeft = FloatVector.zero(FloatVector.SPECIES_512);
-        var tmpRight = FloatVector.zero(FloatVector.SPECIES_512);
-        var intShuffles = new int[shuffles.length()];
-        for (int i = 0; i < shuffles.length(); i++) {
-            intShuffles[i] = Byte.toUnsignedInt(shuffles.get(i));
-        }
-        for (int i = 0; i < codebookCount; i++) {
-            var shuffleLeft = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32);
-            var shuffleRight = VectorShuffle.fromArray(FloatVector.SPECIES_512, intShuffles, i * 32 + 16);
-            var partials = FloatVector.SPECIES_512.fromArray(tlPartials.array(), i * 16);
-            tmpLeft = tmpLeft.add(partials.rearrange(shuffleLeft));
-            tmpRight = tmpRight.add(partials.rearrange(shuffleRight));
-        }
-        switch (vsf) {
-            case DOT_PRODUCT:
-                tmpLeft = tmpLeft.add(1);
-                tmpRight = tmpRight.add(1);
-                tmpLeft = tmpLeft.div(2);
-                tmpRight = tmpRight.div(2);
-                break;
-            case EUCLIDEAN:
-                tmpLeft = tmpLeft.add(1);
-                tmpRight = tmpRight.add(1);
-                var ones = FloatVector.broadcast(FloatVector.SPECIES_512, 1);
-                tmpLeft = ones.div(tmpLeft);
-                tmpRight = ones.div(tmpRight);
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown similarity function: " + vsf);
-        }
-
-        tmpLeft.intoArray(results.get(), 0);
-        tmpRight.intoArray(results.get(), 16);*/
+    public static void bulkShuffleSimilarity(ArrayVectorByte shuffles, int codebookCount, ArrayVectorFloat partials, ArrayVectorFloat results, VectorSimilarityFunction vsf) {
         for (int i = 0; i < codebookCount; i++) {
             for (int j = 0; j < 32; j++) {
-                results.set(j, results.get(j) + tlPartials.get(i * 32 + shuffles.get(i * 32 + j)));
+                results.set(j, results.get(j) + partials.get(i * 32 + shuffles.get(i * 32 + j)));
             }
         }
 

@@ -59,7 +59,7 @@ public final class VectorUtil {
               (a.length - aoffset) + "), b(" + (b.length - boffset) + "), length(" + length + ")");
     }*/
     float r = impl.dotProduct(a, aoffset, b, boffset, length);
-    assert Float.isFinite(r) : String.format("dotProduct(%s, %s) = %s", a, b, r);
+    assert Float.isFinite(r) : String.format("dotProduct(%s, %s) = %s", a, b, r); // TODO: useful toStrings for VectorFloat/VectorByte impls
     return r;
   }
 
@@ -242,8 +242,8 @@ public final class VectorUtil {
     return impl.assembleAndSum(data, dataBase, dataOffsets);
   }
 
-  public static void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> tlPartials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
-    impl.bulkShuffleSimilarity(shuffles, codebookCount, tlPartials, results, vsf);
+  public static void bulkShuffleSimilarity(VectorByte<?> shuffles, int codebookCount, VectorFloat<?> partials, VectorFloat<?> results, VectorSimilarityFunction vsf) {
+    impl.bulkShuffleSimilarity(shuffles, codebookCount, partials, results, vsf);
   }
 
   public static int hammingDistance(long[] v1, long[] v2) {

@@ -186,7 +186,6 @@
                                         <argument>--add-modules=jdk.incubator.vector</argument>
                                         <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
                                         <argument>-ea</argument>
-                                        <argument>-Djava.library.path=${project.build.directory}/../jvector-native/src/main/resources</argument>
                                         <argument>io.github.jbellis.jvector.example.IPCService</argument>
                                     </arguments>
                                 </configuration>

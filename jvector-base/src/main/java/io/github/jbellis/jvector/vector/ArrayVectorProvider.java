@@ -26,7 +26,10 @@ import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 
-public class ArrayVectorProvider implements VectorTypeSupport
+/**
+ * VectorTypeSupport implementation that uses on-heap arrays for VectorByte/VectorFloat.
+ */
+final class ArrayVectorProvider implements VectorTypeSupport
 {
 
     @Override

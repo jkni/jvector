@@ -16,21 +16,23 @@
 
 package io.github.jbellis.jvector.vector;
 
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.Buffer;
-import java.nio.ByteBuffer;
 
-import io.github.jbellis.jvector.vector.types.VectorFloat;
-
+/**
+ * VectorFloat implementation backed by an off-heap MemorySegment.
+ */
 final public class OffHeapVectorFloat implements VectorFloat<MemorySegment>
 {
     private final MemorySegment segment;
     private static final ThreadLocal<SegmentAllocator> allocator =
-            ThreadLocal.withInitial(() -> SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64)));
+            ThreadLocal.withInitial(() -> SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64))); // TODO: real buffer pool
     private final int length;
 
     OffHeapVectorFloat(int length) {
@@ -115,12 +117,6 @@ final public class OffHeapVectorFloat implements VectorFloat<MemorySegment>
         OffHeapVectorFloat csrc = (OffHeapVectorFloat) src;
         segment.asSlice((long) destOffset * Float.BYTES, (long) length * Float.BYTES)
                 .copyFrom(csrc.segment.asSlice((long) srcOffset * Float.BYTES, (long) length * Float.BYTES));
-    }
-
-    @Override
-    public float[] array()
-    {
-        throw new UnsupportedOperationException();
     }
 
     @Override
