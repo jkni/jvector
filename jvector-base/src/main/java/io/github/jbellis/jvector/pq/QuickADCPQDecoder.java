@@ -16,7 +16,6 @@
 
 package io.github.jbellis.jvector.pq;
 
-import io.github.jbellis.jvector.graph.GraphIndex;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorUtil;
@@ -81,7 +80,7 @@ public abstract class QuickADCPQDecoder implements NodeSimilarity.ApproximateSco
             super(fgi.pqv, query, VectorSimilarityFunction.DOT_PRODUCT);
             this.fgi = fgi;
             this.fgiView = fgi.scoreView.get();
-            this.results = vectorTypeSupport.createFloatType(fgi.maxDegree());
+            this.results = fgi.reusableResults();
         }
 
         @Override
@@ -112,7 +111,7 @@ public abstract class QuickADCPQDecoder implements NodeSimilarity.ApproximateSco
             super(fgi.pqv, query, VectorSimilarityFunction.EUCLIDEAN);
             this.fgi = fgi;
             this.fgiView = fgi.scoreView.get();
-            this.results = vectorTypeSupport.createFloatType(fgi.maxDegree());
+            this.results = fgi.reusableResults();
         }
 
         @Override

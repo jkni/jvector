@@ -161,7 +161,7 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
      */
     @Override
     public VectorByte<?>[] encodeAll(List<VectorFloat<?>> vectors, ForkJoinPool simdExecutor) {
-        return simdExecutor.submit(() ->vectors.stream().parallel().map(this::encode).toArray(VectorByte<?>[]::new)).join();
+        return simdExecutor.submit(() -> vectors.stream().parallel().map(this::encode).toArray(VectorByte<?>[]::new)).join();
     }
 
     /**

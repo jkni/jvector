@@ -21,7 +21,6 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.Buffer;
 
@@ -31,19 +30,10 @@ import java.nio.Buffer;
 final public class OffHeapVectorFloat implements VectorFloat<MemorySegment>
 {
     private final MemorySegment segment;
-    private static final ThreadLocal<SegmentAllocator> allocator =
-            ThreadLocal.withInitial(() -> SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64))); // TODO: real buffer pool
     private final int length;
 
     OffHeapVectorFloat(int length) {
-        MemorySegment segment;
-        try {
-            segment = allocator.get().allocate(length * Float.BYTES, 64);
-        } catch (IndexOutOfBoundsException e) {
-            allocator.set(SegmentAllocator.slicingAllocator(Arena.ofAuto().allocate(1024 * 1024 * 128L, 64)));
-            segment = allocator.get().allocate(length * Float.BYTES, 64);
-        }
-        this.segment = segment;
+        this.segment = Arena.ofAuto().allocate(length * Float.BYTES, 4);
         this.length = length;
     }
 

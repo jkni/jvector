@@ -19,7 +19,12 @@ package io.github.jbellis.jvector.pq;
 import io.github.jbellis.jvector.annotations.Experimental;
 import io.github.jbellis.jvector.disk.RandomAccessReader;
 import io.github.jbellis.jvector.disk.ReaderSupplier;
-import io.github.jbellis.jvector.graph.*;
+import io.github.jbellis.jvector.graph.ApproximateScoreProvider;
+import io.github.jbellis.jvector.graph.GraphIndex;
+import io.github.jbellis.jvector.graph.NodeSimilarity;
+import io.github.jbellis.jvector.graph.NodesIterator;
+import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
+import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.util.Accountable;
 import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
@@ -60,13 +65,14 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
     private final int dimension;
     final ThreadLocal<OnDiskView> scoreView;
     final PQVectors pqv;
+    private final ThreadLocal<VectorFloat<?>> results;
 
 
     public OnDiskADCGraphIndex(ReaderSupplier readerSupplier, long offset)
     {
         this.readerSupplier = readerSupplier;
         this.neighborsOffset = offset + 5 * Integer.BYTES;
-        scoreView = ThreadLocal.withInitial(() -> new OnDiskView(readerSupplier.get()));
+        scoreView = ThreadLocal.withInitial(() -> new CleanableView(readerSupplier.get()));
         try (var reader = readerSupplier.get()) {
             reader.seek(offset);
             size = reader.readInt();
@@ -82,6 +88,7 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
         } catch (Exception e) {
             throw new RuntimeException("Error initializing OnDiskADCGraphIndex at offset " + offset, e);
         }
+        results = ThreadLocal.withInitial(() -> vectorTypeSupport.createFloatType(maxDegree));
     }
 
     /**
@@ -114,12 +121,19 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
         return maxDegree;
     }
 
-    /** return a Graph that can be safely queried concurrently */
+    /** return a View that can be safely queried concurrently */
     public OnDiskADCGraphIndex<T>.OnDiskView getView()
     {
         return new OnDiskView(readerSupplier.get());
     }
 
+    /** return a View that can be safely queried concurrently */
+    OnDiskADCGraphIndex<T>.OnDiskView getCleanableView()
+    {
+        return new CleanableView(readerSupplier.get());
+    }
+
+    @Override
     public NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(VectorFloat<?> query, VectorSimilarityFunction similarityFunction) {
         switch (similarityFunction) {
             case DOT_PRODUCT:
@@ -129,6 +143,10 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
             default:
                 throw new IllegalArgumentException("Unsupported similarity function " + similarityFunction);
         }
+    }
+
+    VectorFloat<?> reusableResults() {
+        return results.get();
     }
 
     private static Runnable createViewCleaner(RandomAccessReader reader) {
@@ -147,13 +165,11 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
         private final RandomAccessReader reader;
         private final int[] neighbors;
         private final VectorByte<?> packedNeighbors;
-        private final Cleaner.Cleanable cleanable;
 
         public OnDiskView(RandomAccessReader reader)
         {
             super();
             this.reader = reader;
-            this.cleanable = cleaner.register(this, createViewCleaner(reader));
             this.neighbors = new int[maxDegree];
             this.packedNeighbors = vectorTypeSupport.createByteType(maxDegree * pqv.getCompressedSize());
         }
@@ -216,7 +232,7 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
 
         @Override
         public void close() throws IOException {
-            cleanable.clean();
+            reader.close();
         }
     }
 
@@ -349,6 +365,20 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
             pqVectors.write(out);
         } catch (Exception e) {
             throw new IOException(e);
+        }
+    }
+
+    private class CleanableView extends OnDiskView {
+        private final Cleaner.Cleanable cleanable;
+
+        public CleanableView(RandomAccessReader reader) {
+            super(reader);
+            this.cleanable = cleaner.register(this, createViewCleaner(reader));
+        }
+
+        @Override
+        public void close() throws IOException {
+            cleanable.clean();
         }
     }
 }
