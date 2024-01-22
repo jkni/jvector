@@ -178,7 +178,7 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
         VectorFloat<?> finalVector = vector;
         VectorByte<?> encoded = vectorTypeSupport.createByteType(M);
         for (int m = 0; m < M; m++) {
-            encoded.set(m, (byte) closetCentroidIndex(getSubVector(finalVector, m, subvectorSizesAndOffsets), codebooks[m]));
+            encoded.set(m, (byte) closestCentroidIndex(finalVector, subvectorSizesAndOffsets[m], codebooks[m]));
         }
         return encoded;
     }
@@ -256,11 +256,11 @@ public class ProductQuantization implements VectorCompressor<VectorByte<?>> {
                 .join();
     }
     
-    static int closetCentroidIndex(VectorFloat<?> subvector, VectorFloat<?>[] codebook) {
+    static int closestCentroidIndex(VectorFloat<?> vector, int[] subvectorSizeAndOffset, VectorFloat<?>[] codebook) {
         int index = 0;
         float minDist = Integer.MAX_VALUE;
         for (int i = 0; i < codebook.length; i++) {
-            float dist = VectorUtil.squareDistance(subvector, codebook[i]);
+            float dist = VectorUtil.squareDistance(vector, subvectorSizeAndOffset[1], codebook[i], 0, subvectorSizeAndOffset[0]);
             if (dist < minDist) {
                 minDist = dist;
                 index = i;
