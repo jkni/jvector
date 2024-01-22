@@ -18,8 +18,6 @@ package io.github.jbellis.jvector.graph;
 
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 
-import java.util.Map;
-
 /** Encapsulates comparing node distances. */
 public interface NodeSimilarity {
     /** for one-off comparisons between nodes */
@@ -71,7 +69,7 @@ public interface NodeSimilarity {
         float similarityTo(int node2);
     }
 
-    interface ReRanker {
+    interface Reranker {
         float similarityTo(int node2);
     }
 }

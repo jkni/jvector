@@ -42,6 +42,8 @@ import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 import org.junit.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -389,6 +391,20 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
         assertTrue("overlap=" + overlap, overlap > 0.9);
     }
 
+    protected NodeSimilarity.ExactScoreFunction getScoreFunction(T query, RandomAccessVectorValues<T> vectors) {
+        NodeSimilarity.ExactScoreFunction scoreFunction = i -> {
+            switch (getVectorEncoding()) {
+                case BYTE:
+                    return similarityFunction.compare((byte[]) query, (byte[]) vectors.vectorValue(i));
+                case FLOAT32:
+                    return similarityFunction.compare((float[]) query, (float[]) vectors.vectorValue(i));
+                default:
+                    throw new RuntimeException("Unsupported vector encoding: " + getVectorEncoding());
+            }
+        };
+        return scoreFunction;
+    }
+
     private int computeOverlap(int[] a, int[] b) {
         Arrays.sort(a);
         Arrays.sort(b);
@@ -532,7 +548,7 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
      * Generate a random bitset where before startIndex all bits are set, and after startIndex each
      * entry has a 2/3 probability of being set.
      */
-    private static Bits createRandomAcceptOrds(int startIndex, int length) {
+    protected static Bits createRandomAcceptOrds(int startIndex, int length) {
         FixedBitSet bits = new FixedBitSet(length);
         // all bits are set before startIndex
         for (int i = 0; i < startIndex; i++) {

@@ -50,13 +50,17 @@ public class GraphSearcher<T> {
 
     private final GraphIndex.View<T> view;
 
-    /**
-     * Scratch data structures that are used in each {@link #searchInternal} call. These can be expensive
-     * to allocate, so they're cleared and reused across calls.
-     */
+    // Scratch data structures that are used in each {@link #searchInternal} call. These can be expensive
+    // to allocate, so they're cleared and reused across calls.
     private final NodeQueue candidates;
-
     private final BitSet visited;
+    // we don't actually need this ordered, but NQ is our only structure that doesn't need to allocate extra containers
+    private final NodeQueue evictedResults;
+
+    // Search parameters that we save here for use by resume()
+    private NodeSimilarity.ScoreFunction scoreFunction;
+    private NodeSimilarity.Reranker reranker;
+    private Bits acceptOrds;
 
     /**
      * Creates a new graph searcher.
@@ -66,6 +70,7 @@ public class GraphSearcher<T> {
     GraphSearcher(GraphIndex.View<T> view, BitSet visited) {
         this.view = view;
         this.candidates = new NodeQueue(new GrowableLongHeap(100), NodeQueue.Order.MAX_HEAP);
+        this.evictedResults = new NodeQueue(new GrowableLongHeap(100), NodeQueue.Order.MAX_HEAP);
         this.visited = visited;
     }
 
@@ -112,7 +117,7 @@ public class GraphSearcher<T> {
 
     /**
      * @param scoreFunction   a function returning the similarity of a given node to the query vector
-     * @param reRanker        if scoreFunction is approximate, this should be non-null and perform exact
+     * @param reranker        if scoreFunction is approximate, this should be non-null and perform exact
      *                        comparisons of the vectors for re-ranking at the end of the search.
      * @param topK            the number of results to look for. With threshold=0, the search will continue until at least
      *                        `topK` results have been found, or until the entire graph has been searched.
@@ -133,17 +138,17 @@ public class GraphSearcher<T> {
      */
     @Experimental
     public SearchResult search(NodeSimilarity.ScoreFunction scoreFunction,
-                               NodeSimilarity.ReRanker reRanker,
+                               NodeSimilarity.Reranker reranker,
                                int topK,
                                float threshold,
                                float rerankFloor,
                                Bits acceptOrds) {
-        return searchInternal(scoreFunction, reRanker, topK, threshold, rerankFloor, view.entryNode(), acceptOrds);
+        return searchInternal(scoreFunction, reranker, topK, threshold, rerankFloor, view.entryNode(), acceptOrds);
     }
 
     /**
      * @param scoreFunction   a function returning the similarity of a given node to the query vector
-     * @param reRanker        if scoreFunction is approximate, this should be non-null and perform exact
+     * @param reranker        if scoreFunction is approximate, this should be non-null and perform exact
      *                        comparisons of the vectors for re-ranking at the end of the search.
      * @param topK            the number of results to look for. With threshold=0, the search will continue until at least
      *                        `topK` results have been found, or until the entire graph has been searched.
@@ -158,17 +163,17 @@ public class GraphSearcher<T> {
      * @return a SearchResult containing the topK results and the number of nodes visited during the search.
      */
     public SearchResult search(NodeSimilarity.ScoreFunction scoreFunction,
-                               NodeSimilarity.ReRanker reRanker,
+                               NodeSimilarity.Reranker reranker,
                                int topK,
                                float threshold,
                                Bits acceptOrds) {
-        return search(scoreFunction, reRanker, topK, threshold, 0.0f, acceptOrds);
+        return search(scoreFunction, reranker, topK, threshold, 0.0f, acceptOrds);
     }
 
 
     /**
      * @param scoreFunction   a function returning the similarity of a given node to the query vector
-     * @param reRanker        if scoreFunction is approximate, this should be non-null and perform exact
+     * @param reranker        if scoreFunction is approximate, this should be non-null and perform exact
      *                        comparisons of the vectors for re-ranking at the end of the search.
      * @param topK            the number of results to look for. With threshold=0, the search will continue until at least
      *                        `topK` results have been found, or until the entire graph has been searched.
@@ -179,139 +184,39 @@ public class GraphSearcher<T> {
      * @return a SearchResult containing the topK results and the number of nodes visited during the search.
      */
     public SearchResult search(NodeSimilarity.ScoreFunction scoreFunction,
-                               NodeSimilarity.ReRanker reRanker,
+                               NodeSimilarity.Reranker reranker,
                                int topK,
                                Bits acceptOrds)
     {
-        return search(scoreFunction, reRanker, topK, 0.0f, acceptOrds);
-    }
-
-    SearchResult searchInternal(NodeSimilarity.ScoreFunction scoreFunction,
-                                NodeSimilarity.ReRanker reRanker,
-                                int topK,
-                                float threshold,
-                                int ep,
-                                Bits acceptOrds)
-    {
-        return searchInternal(scoreFunction, reRanker, topK, threshold, 0, ep, acceptOrds);
+        return search(scoreFunction, reranker, topK, 0.0f, acceptOrds);
     }
 
     /**
-     * Add the closest neighbors found to a priority queue (heap). These are returned in
-     * proximity order -- the closest neighbor of the topK found, i.e. the one with the highest
-     * score/comparison value, will be at the front of the array.
-     * <p>
-     * If scoreFunction is exact, then reRanker may be null.
-     * <p>
-     * This method never calls acceptOrds.length(), so the length-free Bits.ALL may be passed in.
+     * Set up the state for a new search and kick it off
      */
     SearchResult searchInternal(NodeSimilarity.ScoreFunction scoreFunction,
-                                NodeSimilarity.ReRanker reRanker,
+                                NodeSimilarity.Reranker reranker,
                                 int topK,
                                 float threshold,
                                 float rerankFloor,
                                 int ep,
-                                Bits acceptOrds)
+                                Bits rawAcceptOrds)
     {
-        if (!scoreFunction.isExact() && reRanker == null) {
-            throw new IllegalArgumentException("Either scoreFunction must be exact, or reRanker must not be null");
+        if (!scoreFunction.isExact() && reranker == null) {
+            throw new IllegalArgumentException("Either scoreFunction must be exact, or reranker must not be null");
         }
-        if (acceptOrds == null) {
+        if (rawAcceptOrds == null) {
             throw new IllegalArgumentException("Use MatchAllBits to indicate that all ordinals are accepted, instead of null");
         }
 
-        prepareScratchState(view.size());
-        var scoreTracker = threshold > 0 ? new ScoreTracker.NormalDistributionTracker(threshold) : ScoreTracker.NO_OP;
-        if (ep < 0) {
-            return new SearchResult(new SearchResult.NodeScore[0], visited, 0);
-        }
+        // save search parameters for potential later resume
+        this.scoreFunction = scoreFunction;
+        this.reranker = reranker;
+        this.acceptOrds = Bits.intersectionOf(rawAcceptOrds, view.liveNodes());
 
-        acceptOrds = Bits.intersectionOf(acceptOrds, view.liveNodes());
-
-        // Threshold callers (and perhaps others) will be tempted to pass in a huge topK.
-        // Let's not allocate a ridiculously large heap up front in that scenario.
-        var resultsQueue = new NodeQueue(new BoundedLongHeap(min(1024, topK), topK), NodeQueue.Order.MIN_HEAP);
-        int numVisited = 0;
-
-        float score = scoreFunction.similarityTo(ep);
-        visited.set(ep);
-        numVisited++;
-        candidates.push(ep, score);
-
-        // A bound that holds the minimum similarity to the query vector that a candidate vector must
-        // have to be considered.
-        float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
-        VectorFloat<?> similarities = null;
-
-        while (candidates.size() > 0 && !resultsQueue.incomplete()) {
-            // done when best candidate is worse than the worst result so far
-            float topCandidateScore = candidates.topScore();
-            if (topCandidateScore < minAcceptedSimilarity) {
-                break;
-            }
-
-            // periodically check whether we're likely to find a node above the threshold in the future
-            if (scoreTracker.shouldStop(numVisited)) {
-                break;
-            }
-
-            // add the top candidate to the resultset if it qualifies, and update minAcceptedSimilarity
-            int topCandidateNode = candidates.pop();
-            if (acceptOrds.get(topCandidateNode)
-                && topCandidateScore >= threshold
-                && resultsQueue.push(topCandidateNode, topCandidateScore)
-                && resultsQueue.size() >= topK)
-            {
-                minAcceptedSimilarity = resultsQueue.topScore();
-            }
-
-            var it = view.getNeighborsIterator(topCandidateNode);
-
-            if (scoreFunction.supportsBulkSimilarity()) {
-                similarities = scoreFunction.bulkSimilarityTo(topCandidateNode);
-            }
-
-            for (int i = 0; i < it.size(); i++) {
-                var friendOrd = it.nextInt();
-                if (visited.getAndSet(friendOrd)) {
-                    continue;
-                }
-                numVisited++;
-
-                float friendSimilarity = scoreFunction.supportsBulkSimilarity() ? similarities.get(i) : scoreFunction.similarityTo(friendOrd);
-                scoreTracker.track(friendSimilarity);
-                if (friendSimilarity >= minAcceptedSimilarity) {
-                    candidates.push(friendOrd, friendSimilarity);
-                }
-            }
-        }
-
-        assert resultsQueue.size() <= topK;
-        SearchResult.NodeScore[] nodes = extractScores(scoreFunction, reRanker, resultsQueue, rerankFloor);
-        return new SearchResult(nodes, visited, numVisited);
-    }
-
-    private static SearchResult.NodeScore[] extractScores(NodeSimilarity.ScoreFunction sf,
-                                                          NodeSimilarity.ReRanker reRanker,
-                                                          NodeQueue resultsQueue,
-                                                          float rerankFloor)
-    {
-        SearchResult.NodeScore[] nodes;
-        if (sf.isExact()) {
-            nodes = new SearchResult.NodeScore[resultsQueue.size()];
-            for (int i = nodes.length - 1; i >= 0; i--) {
-                var nScore = resultsQueue.topScore();
-                var n = resultsQueue.pop();
-                nodes[i] = new SearchResult.NodeScore(n, nScore);
-            }
-        } else {
-            nodes = resultsQueue.nodesCopy(reRanker::similarityTo, rerankFloor);
-            Arrays.sort(nodes, 0, nodes.length, Comparator.comparingDouble((SearchResult.NodeScore nodeScore) -> nodeScore.score).reversed());
-        }
-        return nodes;
-    }
-
-    private void prepareScratchState(int capacity) {
+        // reset the scratch data structures
+        int capacity = view.size();
+        evictedResults.clear();
         candidates.clear();
         if (visited.length() < capacity) {
             // this happens during graph construction; otherwise the size of the vector values should
@@ -325,5 +230,155 @@ public class GraphSearcher<T> {
             // else GrowableBitSet knows how to grow itself safely
         }
         visited.clear();
+
+        // no entry point -> empty results
+        if (ep < 0) {
+            return new SearchResult(new SearchResult.NodeScore[0], visited, 0);
+        }
+
+        // kick off the actual search at the entry point
+        float score = scoreFunction.similarityTo(ep);
+        visited.set(ep);
+        candidates.push(ep, score);
+        var sr = resume(topK, threshold, rerankFloor);
+
+        // include the entry node in visitedCount
+        return new SearchResult(sr.getNodes(), sr.getVisited(), sr.getVisitedCount() + 1);
     }
+
+    /**
+     * Experimental!
+     * <p>
+     * Resume the previous search where it left off and search for the best `additionalK` neighbors.
+     * It is NOT valid to call this method before calling
+     * `search`, but `resume` may be called as many times as desired once the search is initialized.
+     * <p>
+     * SearchResult.visitedCount resets with each call to `search` or `resume`.
+     */
+    @Experimental
+    public SearchResult resume(int additionalK, float threshold, float rerankFloor) {
+        // Threshold callers (and perhaps others) will be tempted to pass in a huge topK.
+        // Let's not allocate a ridiculously large heap up front in that scenario.
+        var resultsQueue = new NodeQueue(new BoundedLongHeap(min(1024, additionalK), additionalK), NodeQueue.Order.MIN_HEAP);
+
+        int numVisited = 0;
+        // A bound that holds the minimum similarity to the query vector that a candidate vector must
+        // have to be considered.
+        var minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
+        var scoreTracker = threshold > 0 ? new ScoreTracker.NormalDistributionTracker(threshold) : ScoreTracker.NO_OP;
+        VectorFloat<?> similarities = null;
+        // add evicted results from the last call back to the candidates
+        var previouslyEvicted = evictedResults.size() > 0 ? new GrowableBitSet(view.size()) : Bits.NONE;
+        while (evictedResults.size() > 0) {
+            float score = evictedResults.topScore();
+            int node = evictedResults.pop();
+            candidates.push(node, score);
+            ((GrowableBitSet) previouslyEvicted).set(node);
+        }
+        evictedResults.clear();
+
+        while (candidates.size() > 0 && !resultsQueue.incomplete()) {
+            // done when best candidate is worse than the worst result so far
+            float topCandidateScore = candidates.topScore();
+            if (topCandidateScore < minAcceptedSimilarity) {
+                break;
+            }
+
+            // periodically check whether we're likely to find a node above the threshold in the future
+            if (scoreTracker.shouldStop(numVisited)) {
+                break;
+            }
+
+            // process the top candidate
+            int topCandidateNode = candidates.pop();
+            if (acceptOrds.get(topCandidateNode) && topCandidateScore >= threshold) {
+                // add the new node to the results queue, and any evicted node to evictedResults in case we resume later
+                // (push() can't tell us what node was evicted when the queue was already full, so we examine that manually)
+                boolean added;
+                if (resultsQueue.size() < additionalK) {
+                    resultsQueue.push(topCandidateNode, topCandidateScore);
+                    added = true;
+                } else if (topCandidateScore > resultsQueue.topScore()) {
+                    int evictedNode = resultsQueue.topNode();
+                    float evictedScore = resultsQueue.topScore();
+                    evictedResults.push(evictedNode, evictedScore);
+                    resultsQueue.push(topCandidateNode, topCandidateScore);
+                    added = true;
+                } else {
+                    added = false;
+                }
+
+                // update minAcceptedSimilarity if we've found K results
+                if (added && resultsQueue.size() >= additionalK) {
+                    minAcceptedSimilarity = resultsQueue.topScore();
+                }
+            }
+
+            // if this candidate came from evictedResults, we don't need to evaluate its neighbors again
+            if (previouslyEvicted.get(topCandidateNode)) {
+                continue;
+            }
+
+            if (scoreFunction.supportsBulkSimilarity()) {
+                similarities = scoreFunction.bulkSimilarityTo(topCandidateNode);
+            }
+
+            var it = view.getNeighborsIterator(topCandidateNode);
+
+            for (int i = 0; i < it.size(); i++) {
+                var friendOrd = it.nextInt();
+                if (visited.getAndSet(friendOrd)) {
+                    continue;
+                }
+                numVisited++;
+
+                float friendSimilarity = scoreFunction.supportsBulkSimilarity() ? similarities.get(i) : scoreFunction.similarityTo(friendOrd);
+                scoreTracker.track(friendSimilarity);
+                candidates.push(friendOrd, friendSimilarity);
+            }
+        }
+
+        assert resultsQueue.size() <= additionalK;
+        SearchResult.NodeScore[] nodes = extractScores(scoreFunction, reranker, resultsQueue, rerankFloor);
+        return new SearchResult(nodes, visited, numVisited);
+    }
+
+    /**
+     * Experimental!
+     * <p>
+     * Resume the previous search where it left off and search for the best `additionalK` neighbors.
+     * It is NOT valid to call this method before calling
+     * `search`, but `resume` may be called as many times as desired once the search is initialized.
+     * <p>
+     * SearchResult.visitedCount resets with each call to `search` or `resume`.
+     */
+    @Experimental
+    public SearchResult resume(int additionalK) {
+        return resume(additionalK, 0.0f, 0.0f);
+    }
+
+    /**
+     * Empty resultsQueue and rerank its contents, if necessary, and return them in sorted order.
+     */
+    private static SearchResult.NodeScore[] extractScores(NodeSimilarity.ScoreFunction sf,
+                                                          NodeSimilarity.Reranker reranker,
+                                                          NodeQueue resultsQueue,
+                                                          float rerankFloor)
+    {
+        SearchResult.NodeScore[] nodes;
+        if (sf.isExact()) {
+            nodes = new SearchResult.NodeScore[resultsQueue.size()];
+            for (int i = nodes.length - 1; i >= 0; i--) {
+                var nScore = resultsQueue.topScore();
+                var n = resultsQueue.pop();
+                nodes[i] = new SearchResult.NodeScore(n, nScore);
+            }
+        } else {
+            nodes = resultsQueue.nodesCopy(reranker::similarityTo, rerankFloor);
+            Arrays.sort(nodes, 0, nodes.length, Comparator.comparingDouble((SearchResult.NodeScore nodeScore) -> nodeScore.score).reversed());
+            resultsQueue.clear();
+        }
+        return nodes;
+    }
+
 }

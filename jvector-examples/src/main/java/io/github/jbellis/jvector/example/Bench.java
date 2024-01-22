@@ -30,7 +30,6 @@ import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.NodeSimilarity;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.SearchResult;
-import io.github.jbellis.jvector.pq.BinaryQuantization;
 import io.github.jbellis.jvector.pq.CachingADCGraphIndex;
 import io.github.jbellis.jvector.pq.CompressedVectors;
 import io.github.jbellis.jvector.pq.OnDiskADCGraphIndex;
@@ -192,7 +191,7 @@ public class Bench {
                         } else {
                             sf = cv.approximateScoreFunctionFor(queryVector, ds.similarityFunction);
                         }
-                        NodeSimilarity.ReRanker rr = (j) -> ds.similarityFunction.compare(queryVector, exactVv.vectorValue(j));
+                        NodeSimilarity.Reranker rr = (j) -> ds.similarityFunction.compare(queryVector, exactVv.vectorValue(j));
                         sr = new GraphSearcher.Builder<>(view)
                                 .build()
                                 .search(sf, rr, efSearch, Bits.ALL);
@@ -220,7 +219,6 @@ public class Bench {
         var efSearchGrid = List.of(1, 2);
         List<Function<DataSet, VectorCompressor<?>>> compressionGrid = Arrays.asList(
                 null, // uncompressed
-                ds -> BinaryQuantization.compute(ds.getBaseRavv()),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4, 32,
                                                   ds.similarityFunction == VectorSimilarityFunction.EUCLIDEAN),
                 ds -> ProductQuantization.compute(ds.getBaseRavv(), ds.getDimension() / 4,
