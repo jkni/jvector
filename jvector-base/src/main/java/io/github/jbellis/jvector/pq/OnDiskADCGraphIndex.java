@@ -80,11 +80,9 @@ public class OnDiskADCGraphIndex<T> implements GraphIndex<T>, AutoCloseable, Acc
             entryNode = reader.readInt();
             maxDegree = reader.readInt();
             var subspaceCount = reader.readInt();
-            pqv = PQVectors.load(reader, offset + 5 * Integer.BYTES // structural data
-                    + size * (Integer.BYTES // ordinal
-                    + dimension * Float.BYTES // vector
-                    + subspaceCount * maxDegree // compressed neighbors
-                    + Integer.BYTES * (maxDegree + 1)));// neighbors
+            var pqOffset = offset + 5 * Integer.BYTES + size * (Integer.BYTES + (long) dimension * Float.BYTES
+                    + (long) subspaceCount * maxDegree + (long) Integer.BYTES * (maxDegree + 1));
+            pqv = PQVectors.load(reader, pqOffset);
         } catch (Exception e) {
             throw new RuntimeException("Error initializing OnDiskADCGraphIndex at offset " + offset, e);
         }

@@ -115,7 +115,7 @@
                                     <arguments>
                                         <argument>-classpath</argument>
                                         <classpath/>
-                                        <argument>-Xmx12G</argument>
+                                        <argument>-Xmx14G</argument>
                                         <argument>-ea</argument>
                                         <argument>io.github.jbellis.jvector.example.Bench</argument>
                                         <argument>${benchArgs}</argument>
@@ -168,7 +168,7 @@
                                         <argument>--enable-native-access=ALL-UNNAMED</argument>
                                         <argument>--add-modules=jdk.incubator.vector</argument>
                                         <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
-                                        <argument>-Xmx10G</argument>
+                                        <argument>-Xmx14G</argument>
                                         <argument>-ea</argument>
                                         <argument>io.github.jbellis.jvector.example.Bench</argument>
                                         <argument>${benchArgs}</argument>
@@ -265,7 +265,7 @@
                                         <argument>--add-modules=jdk.incubator.vector</argument>
                                         <argument>-Djava.library.path=${project.build.directory}/../jvector-native/src/main/resources</argument>
                                         <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
-                                        <argument>-Xmx10G</argument>
+                                        <argument>-Xmx14G</argument>
                                         <argument>-ea</argument>
                                         <argument>io.github.jbellis.jvector.example.Bench</argument>
                                         <argument>${benchArgs}</argument>

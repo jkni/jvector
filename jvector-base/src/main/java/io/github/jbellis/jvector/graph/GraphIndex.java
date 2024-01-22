@@ -25,7 +25,6 @@
 package io.github.jbellis.jvector.graph;
 
 import io.github.jbellis.jvector.util.Bits;
-import io.github.jbellis.jvector.vector.types.VectorByte;
 
 import java.io.IOException;
 import java.lang.ref.Cleaner;
@@ -43,7 +42,7 @@ import java.lang.ref.Cleaner;
 public interface GraphIndex<T> extends AutoCloseable {
     // Cleaner used for closing GraphIndex Views in unstructured contexts.
     // This includes Views used for score functions as well as searchers.
-    public static final Cleaner cleaner = Cleaner.create();
+    Cleaner cleaner = Cleaner.create();
 
     /** Returns the number of nodes in the graph */
     int size();
