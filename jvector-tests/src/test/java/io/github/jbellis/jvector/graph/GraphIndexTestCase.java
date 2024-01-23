@@ -33,17 +33,15 @@ import io.github.jbellis.jvector.util.BoundedLongHeap;
 import io.github.jbellis.jvector.util.FixedBitSet;
 import io.github.jbellis.jvector.vector.VectorEncoding;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
-import io.github.jbellis.jvector.vector.VectorUtil;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorByte;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
-
 import org.junit.Test;
 
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Random;
 
 import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -395,9 +393,9 @@ public abstract class GraphIndexTestCase<T> extends LuceneTestCase {
         NodeSimilarity.ExactScoreFunction scoreFunction = i -> {
             switch (getVectorEncoding()) {
                 case BYTE:
-                    return similarityFunction.compare((byte[]) query, (byte[]) vectors.vectorValue(i));
+                    return similarityFunction.compare((VectorByte<?>) query, (VectorByte<?>) vectors.vectorValue(i));
                 case FLOAT32:
-                    return similarityFunction.compare((float[]) query, (float[]) vectors.vectorValue(i));
+                    return similarityFunction.compare((VectorFloat<?>) query, (VectorFloat<?>) vectors.vectorValue(i));
                 default:
                     throw new RuntimeException("Unsupported vector encoding: " + getVectorEncoding());
             }
