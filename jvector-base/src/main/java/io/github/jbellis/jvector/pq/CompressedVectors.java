@@ -27,10 +27,11 @@ public interface CompressedVectors extends Accountable {
     /** write the compressed vectors to the given DataOutput */
     void write(DataOutput out) throws IOException;
 
-    /**
-     * @return a ScoreFunction suitable for performing search against the compressed vectors,
-     * potentially without decompression them first
-     */
+    default NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction, boolean precompute) {
+        return approximateScoreFunctionFor(q, similarityFunction);
+    }
+
+    /** @return an approximate score function for the given query vector and similarity function, defaulting to precomputation */
     NodeSimilarity.ApproximateScoreFunction approximateScoreFunctionFor(float[] q, VectorSimilarityFunction similarityFunction);
 
     /** @return the original size of the vectors, in bytes, before compression */
