@@ -151,9 +151,9 @@ float dot_product_f32_512(const float* a, int aoffset, const float* b, int boffs
 }
 
 float dot_product_f32(int preferred_size, const float* a, int aoffset, const float* b, int boffset, int length) {
-    if (length == 2)
+    if (length < 4)
         return dot_product_f32_64(a, aoffset, b, boffset);
-    if (length <= 7)
+    if (length < 8)
         return dot_product_f32_128(a, aoffset, b, boffset, length);
 
     return (preferred_size == 512 && length >= 16)

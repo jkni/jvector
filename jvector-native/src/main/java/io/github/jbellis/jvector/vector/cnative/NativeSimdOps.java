@@ -193,6 +193,57 @@ public class NativeSimdOps {
         }
     }
 
+    private static class dot_product_f32_512 {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            NativeSimdOps.C_FLOAT,
+            NativeSimdOps.C_POINTER,
+            NativeSimdOps.C_INT,
+            NativeSimdOps.C_POINTER,
+            NativeSimdOps.C_INT,
+            NativeSimdOps.C_INT
+        );
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(
+                    NativeSimdOps.findOrThrow("dot_product_f32_512"),
+                    DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * float dot_product_f32_512(const float *a, int aoffset, const float *b, int boffset, int length)
+     * }
+     */
+    public static FunctionDescriptor dot_product_f32_512$descriptor() {
+        return dot_product_f32_512.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * float dot_product_f32_512(const float *a, int aoffset, const float *b, int boffset, int length)
+     * }
+     */
+    public static MethodHandle dot_product_f32_512$handle() {
+        return dot_product_f32_512.HANDLE;
+    }
+    /**
+     * {@snippet lang=c :
+     * float dot_product_f32_512(const float *a, int aoffset, const float *b, int boffset, int length)
+     * }
+     */
+    public static float dot_product_f32_512(MemorySegment a, int aoffset, MemorySegment b, int boffset, int length) {
+        var mh$ = dot_product_f32_512.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("dot_product_f32_512", a, aoffset, b, boffset, length);
+            }
+            return (float)mh$.invokeExact(a, aoffset, b, boffset, length);
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
     private static class euclidean_f32 {
         public static final FunctionDescriptor DESC = FunctionDescriptor.of(
             NativeSimdOps.C_FLOAT,
